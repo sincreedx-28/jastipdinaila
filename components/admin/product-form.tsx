@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import type { ProductFormState } from "@/lib/actions/products";
 import { deleteProductImage } from "@/lib/actions/products";
+import { CurrencyInput } from "@/components/admin/currency-input";
 
 type ExistingImage = { id: string; url: string };
 
@@ -68,22 +69,15 @@ export function ProductForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="READY">Ready (stok sisa event)</SelectItem>
-            <SelectItem value="PO">PO (pre-order, dibuat setelah pesan)</SelectItem>
+            <SelectItem value="READY">Ready Stock</SelectItem>
+            <SelectItem value="PO">Pre Order</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="price">Harga Jual (Rp)</Label>
-        <Input
-          id="price"
-          name="price"
-          type="number"
-          min={0}
-          defaultValue={defaultValues?.price}
-          required
-        />
+        <Label htmlFor="price">Harga Jual</Label>
+        <CurrencyInput id="price" name="price" defaultValue={defaultValues?.price} required />
         <p className="text-xs text-muted-foreground">
           Ini harga final yang dilihat pelanggan — fee jastip sudah termasuk di sini.
         </p>
