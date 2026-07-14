@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import { whatsappLink } from "@/lib/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +36,10 @@ export default async function AdminOrderDetailPage({
   if (!order) notFound();
 
   const canCancel = order.status === "PENDING_PAYMENT" || order.status === "PAID";
+  const customerWaLink = whatsappLink(
+    order.customerPhone,
+    `Halo ${order.customerName}, mengenai pesanan ${order.orderNumber}`
+  );
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -47,7 +52,19 @@ export default async function AdminOrderDetailPage({
       <div className="rounded-lg border p-4">
         <h2 className="mb-2 text-sm font-medium">Data Pelanggan</h2>
         <p className="text-sm">{order.customerName}</p>
-        <p className="text-sm text-muted-foreground">{order.customerPhone}</p>
+        <p className="text-sm text-muted-foreground">
+          {order.customerPhone}
+          {customerWaLink && (
+            <a
+              href={customerWaLink}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-2 text-primary underline"
+            >
+              Chat WhatsApp
+            </a>
+          )}
+        </p>
         <Separator className="my-3" />
         <h2 className="mb-1 text-sm font-medium">Alamat Pengiriman</h2>
         <p className="text-sm">{order.shippingAddress}</p>

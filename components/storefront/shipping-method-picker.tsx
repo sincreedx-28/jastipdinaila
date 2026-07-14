@@ -21,6 +21,7 @@ function ShippingMethodPickerInner({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
 
   useEffect(() => {
     getCartShippingRates(destinationId, cart).then((result) => {
@@ -28,9 +29,10 @@ function ShippingMethodPickerInner({
       if (!result.ok) {
         setError(
           result.reason === "quota_exceeded"
-            ? "Ongkos kirim otomatis sedang tidak tersedia (kuota harian habis). Silakan hubungi admin via WhatsApp untuk konfirmasi ongkir."
+            ? "Ongkos kirim otomatis sedang tidak tersedia (kuota harian habis)."
             : "Gagal mengambil ongkos kirim. Coba lagi atau hubungi admin."
         );
+        setWhatsappUrl(result.whatsappUrl ?? null);
         return;
       }
       setRates(result.rates);
@@ -43,7 +45,23 @@ function ShippingMethodPickerInner({
   }, []);
 
   if (loading) return <p className="text-sm text-muted-foreground">Menghitung ongkir...</p>;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (error) {
+    return (
+      <div className="space-y-1">
+        <p className="text-sm text-destructive">{error}</p>
+        {whatsappUrl && (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-primary underline"
+          >
+            Hubungi admin via WhatsApp untuk konfirmasi ongkir
+          </a>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">

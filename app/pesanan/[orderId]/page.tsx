@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getSettings, whatsappLink } from "@/lib/settings";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { ClearCartOnMount } from "@/components/storefront/clear-cart-on-mount";
 import { PaymentProofForm } from "@/components/storefront/payment-proof-form";
@@ -27,6 +28,13 @@ export default async function OrderStatusPage({
   });
 
   if (!order) notFound();
+
+  const settings = await getSettings();
+  const hasBankInfo = settings.bank_name && settings.bank_account_number;
+  const waLink = whatsappLink(
+    settings.whatsapp_number,
+    `Halo, saya mau konfirmasi pembayaran untuk pesanan ${order.orderNumber}`
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -74,9 +82,29 @@ export default async function OrderStatusPage({
               <span className="font-semibold text-foreground">
                 Rp{order.totalAmount.toLocaleString("id-ID")}
               </span>{" "}
-              ke rekening yang diinformasikan admin, lalu upload bukti transfer di
-              bawah ini (opsional, mempercepat verifikasi).
+              {hasBankInfo ? (
+                <>
+                  ke <span className="font-semibold text-foreground">{settings.bank_name}</span>{" "}
+                  <span className="font-semibold text-foreground">
+                    {settings.bank_account_number}
+                  </span>{" "}
+                  a.n. {settings.bank_account_holder}
+                </>
+              ) : (
+                "ke rekening yang diinformasikan admin"
+              )}
+              , lalu upload bukti transfer di bawah ini (opsional, mempercepat verifikasi).
             </p>
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-primary underline"
+              >
+                Konfirmasi via WhatsApp
+              </a>
+            )}
             {order.paymentProofUrl ? (
               <p className="text-sm text-green-600">
                 Bukti transfer sudah diupload, menunggu verifikasi admin.
