@@ -3,13 +3,15 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { CartItem } from "@/lib/store/cart";
+import { chargeableWeightGrams, getShippingRates } from "@/lib/rajaongkir";
 
 export type CheckoutState = { error?: string } | undefined;
 
-// Flat placeholder until the RajaOngkir integration (next milestone) replaces
-// this with a real weight+volume based quote. Every field the real flow will
-// eventually populate already exists so the order schema doesn't change later.
-const PLACEHOLDER_SHIPPING_COST = 20000;
+function courierCodeToEnum(code: string): "LION_PARCEL" | "WAHANA" | null {
+  if (code === "lion") return "LION_PARCEL";
+  if (code === "wahana") return "WAHANA";
+  return null;
+}
 
 async function generateOrderNumber() {
   const today = new Date();
@@ -39,6 +41,9 @@ export async function createOrder(
   const shippingCity = String(formData.get("shippingCity") ?? "").trim();
   const shippingProvince = String(formData.get("shippingProvince") ?? "").trim();
   const shippingPostalCode = String(formData.get("shippingPostalCode") ?? "").trim();
+  const rajaongkirDestinationId = String(formData.get("rajaongkirDestinationId") ?? "").trim();
+  const courierCode = String(formData.get("courierCode") ?? "").trim();
+  const courierService = String(formData.get("courierService") ?? "").trim();
   const cartJson = String(formData.get("cart") ?? "[]");
 
   if (!customerName || !customerPhone) {
@@ -46,6 +51,14 @@ export async function createOrder(
   }
   if (!shippingAddress || !shippingCity || !shippingProvince || !shippingPostalCode) {
     return { error: "Alamat pengiriman wajib diisi lengkap." };
+  }
+  if (!rajaongkirDestinationId || !courierCode || !courierService) {
+    return { error: "Pilih tujuan pengiriman dan kurir terlebih dahulu." };
+  }
+
+  const courierEnum = courierCodeToEnum(courierCode);
+  if (!courierEnum) {
+    return { error: "Kurir tidak dikenali." };
   }
 
   let cart: CartItem[];
@@ -86,13 +99,16 @@ export async function createOrder(
       return { error: `Stok "${product.name}" tidak cukup (sisa ${product.stockQty}).` };
     }
 
-    const volumetricWeight =
-      (product.lengthCm * product.widthCm * product.heightCm) / 6000 * 1000;
-    const chargeableUnitWeight = Math.max(product.weightGrams, volumetricWeight);
+    const unitChargeable = chargeableWeightGrams(
+      product.weightGrams,
+      product.lengthCm,
+      product.widthCm,
+      product.heightCm
+    );
 
     const lineTotal = product.price * cartItem.qty;
     itemsSubtotal += lineTotal;
-    totalWeightGrams += chargeableUnitWeight * cartItem.qty;
+    totalWeightGrams += unitChargeable * cartItem.qty;
 
     orderItemsData.push({
       productId: product.id,
@@ -105,8 +121,27 @@ export async function createOrder(
     });
   }
 
+  // Never trust the client-supplied shipping cost either — re-derive the
+  // authoritative rate from the same cache/API path the checkout UI used.
+  const chargeableGrams = Math.ceil(totalWeightGrams);
+  const rateResult = await getShippingRates(rajaongkirDestinationId, chargeableGrams);
+  if (!rateResult.ok) {
+    return {
+      error:
+        rateResult.reason === "quota_exceeded"
+          ? "Ongkos kirim otomatis sedang tidak tersedia. Silakan hubungi admin via WhatsApp untuk konfirmasi ongkir."
+          : "Gagal memverifikasi ongkos kirim, coba lagi.",
+    };
+  }
+  const matchedRate = rateResult.rates.find(
+    (r) => r.courierCode === courierCode && r.service === courierService
+  );
+  if (!matchedRate) {
+    return { error: "Ongkos kirim sudah berubah, silakan pilih ulang kurir." };
+  }
+  const shippingCost = matchedRate.cost;
+
   const orderNumber = await generateOrderNumber();
-  const shippingCost = PLACEHOLDER_SHIPPING_COST;
 
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
@@ -119,12 +154,12 @@ export async function createOrder(
         shippingCity,
         shippingProvince,
         shippingPostalCode,
-        rajaongkirDestinationId: "",
-        courier: "LION_PARCEL",
-        courierService: "Estimasi sementara — belum final",
-        chargeableWeightGrams: Math.ceil(totalWeightGrams),
+        rajaongkirDestinationId,
+        courier: courierEnum,
+        courierService: matchedRate.service,
+        chargeableWeightGrams: chargeableGrams,
         shippingCost,
-        shippingQuoteRaw: {},
+        shippingQuoteRaw: matchedRate,
         itemsSubtotal,
         totalAmount: itemsSubtotal + shippingCost,
         status: "PENDING_PAYMENT",
