@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductType } from "@/lib/generated/prisma/enums";
 
-export const PRODUCT_IMAGE_BUCKET = "product-images";
+const PRODUCT_IMAGE_BUCKET = "product-images";
 
 function slugify(name: string) {
   return (
