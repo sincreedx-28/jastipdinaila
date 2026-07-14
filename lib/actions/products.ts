@@ -164,3 +164,29 @@ export async function deleteProductImage(imageId: string) {
   await prisma.productImage.delete({ where: { id: imageId } });
   revalidatePath("/admin/produk");
 }
+
+export async function deleteProduct(productId: string) {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { images: true },
+  });
+  if (!product) return;
+
+  if (product.images.length > 0) {
+    const supabase = await createClient();
+    const paths = product.images
+      .map((img) => img.url.split(`${PRODUCT_IMAGE_BUCKET}/`)[1])
+      .filter((p): p is string => Boolean(p));
+    if (paths.length > 0) {
+      await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(paths);
+    }
+  }
+
+  // OrderItem.productId is onDelete: SetNull — past orders keep their
+  // name/price/qty snapshot regardless, so this is safe even if the
+  // product was previously ordered.
+  await prisma.product.delete({ where: { id: productId } });
+
+  revalidatePath("/admin/produk");
+  revalidatePath("/produk");
+}

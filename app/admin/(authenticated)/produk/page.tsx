@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toggleProductActive } from "@/lib/actions/products";
+import { DeleteProductButton } from "@/components/admin/delete-product-button";
 
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
@@ -77,11 +78,14 @@ export default async function AdminProductsPage() {
                 </form>
               </TableCell>
               <TableCell>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={`/admin/produk/${p.id}`}>Edit</Link>}
-                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    render={<Link href={`/admin/produk/${p.id}`}>Edit</Link>}
+                  />
+                  <DeleteProductButton productId={p.id} productName={p.name} />
+                </div>
               </TableCell>
             </TableRow>
           ))}
