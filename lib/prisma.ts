@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@/lib/generated/prisma";
+import { PrismaClient } from "@/lib/generated/prisma/client";
 
 // Prisma 7 requires an explicit driver adapter — the schema no longer holds
 // a connection `url`. Standard Next.js dev-mode singleton to avoid exhausting
