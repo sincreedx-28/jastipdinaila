@@ -20,6 +20,7 @@ export function PaymentProofForm({ orderId }: { orderId: string }) {
   return (
     <form action={formAction} className="space-y-2">
       <Input name="proof" type="file" accept="image/*" required />
+      <p className="text-xs text-muted-foreground">Format gambar, maks 5MB.</p>
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "Mengupload..." : "Upload Bukti Transfer"}
