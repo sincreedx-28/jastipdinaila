@@ -76,6 +76,7 @@ model AdminUser {
   supabaseUserId String   @unique
   email          String   @unique
   name           String
+  isSuperAdmin   Boolean  @default(false)
   createdAt      DateTime @default(now())
 }
 

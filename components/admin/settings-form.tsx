@@ -60,6 +60,7 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsMap }) 
       </section>
 
       {state?.success && <p className="text-sm text-green-600">Tersimpan.</p>}
+      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
       <Button type="submit" disabled={pending}>
         {pending ? "Menyimpan..." : "Simpan Pengaturan"}

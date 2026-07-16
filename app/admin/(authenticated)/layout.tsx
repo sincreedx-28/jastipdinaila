@@ -31,6 +31,7 @@ async function requireAdmin() {
           supabaseUserId: user.id,
           email: user.email ?? "",
           name: user.email ?? "Admin",
+          isSuperAdmin: true,
         },
       });
     } else {
@@ -46,7 +47,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/produk", label: "Produk" },
   { href: "/admin/pesanan", label: "Pesanan" },
-  { href: "/admin/pengaturan", label: "Pengaturan" },
+  { href: "/admin/pengaturan", label: "Pengaturan", superAdminOnly: true },
 ];
 
 export default async function AdminLayout({
@@ -62,15 +63,17 @@ export default async function AdminLayout({
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <nav className="flex items-center gap-4">
             <span className="font-semibold">Jastipdinaila Admin</span>
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems
+              .filter((item) => !item.superAdminOnly || admin.isSuperAdmin)
+              .map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ))}
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{admin.email}</span>

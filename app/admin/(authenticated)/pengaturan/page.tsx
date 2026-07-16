@@ -1,7 +1,14 @@
+import { redirect } from "next/navigation";
 import { getSettings } from "@/lib/settings";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 import { SettingsForm } from "@/components/admin/settings-form";
 
 export default async function AdminSettingsPage() {
+  const admin = await getCurrentAdmin();
+  if (!admin?.isSuperAdmin) {
+    redirect("/admin");
+  }
+
   const settings = await getSettings();
 
   return (
