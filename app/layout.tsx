@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jastip Store",
+  title: "Jastipdinaila",
   description: "Titip beli barang Ready & Pre-Order",
 };
 
