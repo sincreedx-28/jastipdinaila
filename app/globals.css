@@ -141,6 +141,17 @@
   --font-heading: var(--font-libre-baskerville);
   --font-sans: var(--font-nunito-sans);
 }
+@keyframes shop-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+.theme-shop .marquee-track {
+  animation: shop-marquee 18s linear infinite;
+}
 .theme-shop .stripes {
   background: repeating-linear-gradient(
     135deg,
