@@ -7,14 +7,16 @@ import type { DestinationOption } from "@/lib/rajaongkir";
 
 export function DestinationPicker({
   onSelect,
+  defaultValue,
 }: {
   onSelect: (destination: DestinationOption) => void;
+  defaultValue?: DestinationOption;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<DestinationOption[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<DestinationOption | null>(null);
+  const [selected, setSelected] = useState<DestinationOption | null>(defaultValue ?? null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

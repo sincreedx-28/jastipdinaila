@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSettings, whatsappLink } from "@/lib/settings";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { ClearCartOnMount } from "@/components/storefront/clear-cart-on-mount";
 import { PaymentProofForm } from "@/components/storefront/payment-proof-form";
@@ -29,6 +30,7 @@ export default async function OrderStatusPage({
 
   if (!order) notFound();
 
+  const customer = await getCurrentCustomer();
   const settings = await getSettings();
   const hasBankInfo = settings.bank_name && settings.bank_account_number;
   const waLink = whatsappLink(
@@ -38,7 +40,7 @@ export default async function OrderStatusPage({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader customer={customer} />
       <ClearCartOnMount />
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-8">
         <div>

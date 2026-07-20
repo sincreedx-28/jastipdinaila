@@ -80,9 +80,55 @@ model AdminUser {
   createdAt      DateTime @default(now())
 }
 
+// Auto-provisioned on first successful Google login — unlike AdminUser there
+// is no allowlist, any authenticated customer gets a row here.
+model Customer {
+  id             String   @id @default(cuid())
+  supabaseUserId String   @unique
+  email          String   @unique
+  name           String
+  createdAt      DateTime @default(now())
+
+  addresses CustomerAddress[]
+  orders    Order[]
+}
+
+// A customer's saved shipping addresses, so repeat orders don't require
+// retyping. Selecting one at checkout only pre-fills the form — the values
+// are still copied onto Order as a frozen snapshot, same as everything else
+// on that model.
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  label          String // free text, e.g. "Rumah", "Kantor"
+  recipientName  String
+  recipientPhone String
+
+  address                 String
+  district                String
+  city                    String
+  province                String
+  postalCode              String
+  rajaongkirDestinationId String
+
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+}
+
 model Order {
   id          String @id @default(cuid())
   orderNumber String @unique // e.g. JT-20260714-0001
+
+  // Set when the order was placed while logged in; null for guest checkout.
+  // customerName/customerPhone below are still always populated directly
+  // from the checkout form either way (frozen snapshot, not read from here).
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   customerName  String
   customerPhone String
@@ -121,6 +167,7 @@ model Order {
 
   @@index([status])
   @@index([customerPhone])
+  @@index([customerId])
 }
 
 model OrderItem {

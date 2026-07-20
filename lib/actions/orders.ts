@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { CartItem } from "@/lib/store/cart";
 import { chargeableWeightGrams, getShippingRates } from "@/lib/rajaongkir";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 
 export type CheckoutState = { error?: string } | undefined;
 
@@ -45,6 +46,8 @@ export async function createOrder(
   const courierCode = String(formData.get("courierCode") ?? "").trim();
   const courierService = String(formData.get("courierService") ?? "").trim();
   const cartJson = String(formData.get("cart") ?? "[]");
+  const saveAddress = formData.get("saveAddress") === "on";
+  const saveAddressLabel = String(formData.get("saveAddressLabel") ?? "").trim() || "Alamat Baru";
 
   if (!customerName || !customerPhone) {
     return { error: "Nama dan nomor HP wajib diisi." };
@@ -142,11 +145,13 @@ export async function createOrder(
   const shippingCost = matchedRate.cost;
 
   const orderNumber = await generateOrderNumber();
+  const customer = await getCurrentCustomer();
 
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
         orderNumber,
+        customerId: customer?.id,
         customerName,
         customerPhone,
         shippingAddress,
@@ -179,6 +184,26 @@ export async function createOrder(
 
     return created;
   });
+
+  if (customer && saveAddress) {
+    const isFirst =
+      (await prisma.customerAddress.count({ where: { customerId: customer.id } })) === 0;
+    await prisma.customerAddress.create({
+      data: {
+        customerId: customer.id,
+        label: saveAddressLabel,
+        recipientName: customerName,
+        recipientPhone: customerPhone,
+        address: shippingAddress,
+        district: shippingDistrict,
+        city: shippingCity,
+        province: shippingProvince,
+        postalCode: shippingPostalCode,
+        rajaongkirDestinationId,
+        isDefault: isFirst,
+      },
+    });
+  }
 
   redirect(`/pesanan/${order.id}`);
 }

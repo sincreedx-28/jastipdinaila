@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
 import {
@@ -18,6 +19,7 @@ async function getAllProducts() {
 
 export default async function ProductsPage() {
   const products = await getAllProducts();
+  const customer = await getCurrentCustomer();
   const ready = products.filter((p) => p.type === "READY");
   const po = products.filter((p) => p.type === "PO");
 
@@ -32,7 +34,7 @@ export default async function ProductsPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
         <h1 className="mb-4 text-xl font-semibold">Semua Produk</h1>
         <Tabs defaultValue="all">

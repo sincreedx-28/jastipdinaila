@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { ProductCard } from "@/components/storefront/product-card";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,11 @@ async function getHomeProducts() {
 
 export default async function Home() {
   const { ready, po } = await getHomeProducts();
+  const customer = await getCurrentCustomer();
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-8">
         {ready.length === 0 && po.length === 0 ? (
           <p className="py-16 text-center text-muted-foreground">

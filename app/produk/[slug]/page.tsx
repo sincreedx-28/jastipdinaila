@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
@@ -18,12 +19,13 @@ export default async function ProductDetailPage({
 
   if (!product) notFound();
 
+  const customer = await getCurrentCustomer();
   const soldOut = product.type === "READY" && (product.stockQty ?? 0) <= 0;
   const mainImage = product.images[0]?.url ?? null;
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader customer={customer} />
       <main className="mx-auto grid w-full max-w-5xl flex-1 gap-8 px-4 py-8 md:grid-cols-2">
         <div className="space-y-3">
           <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
