@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Customer } from "@/lib/generated/prisma/client";
 import { LoginButton } from "@/components/storefront/login-button";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,15 @@ export function SiteHeader({ customer }: { customer?: Customer | null }) {
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <Link href="/" className="text-lg font-semibold">
-          Jastipdinaila
+        <Link href="/" className="shrink-0">
+          <Image
+            src="/logo-jastipdinaila.jpg"
+            alt="jastipdinaila"
+            height={44}
+            width={160}
+            className="h-11 w-auto object-contain mix-blend-multiply"
+            priority
+          />
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/produk" className="text-muted-foreground hover:text-foreground">
