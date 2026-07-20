@@ -35,13 +35,7 @@ export function SiteHeader({ customer }: { customer?: Customer | null }) {
               />
               <DropdownMenuContent align="end">
                 <DropdownMenuItem render={<Link href="/akun">Alamat Saya</Link>} />
-                <DropdownMenuItem
-                  onClick={() => {
-                    signOutCustomer();
-                  }}
-                >
-                  Keluar
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={signOutCustomer}>Keluar</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
