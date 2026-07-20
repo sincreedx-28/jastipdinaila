@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 
 export type RecommendationItem = {
   slug: string;
   name: string;
   category: string | null;
+  imageUrl: string | null;
 };
 
 export function RecommendationCarousel({ items }: { items: RecommendationItem[] }) {
@@ -43,7 +45,11 @@ export function RecommendationCarousel({ items }: { items: RecommendationItem[] 
             className="relative flex aspect-[21/8] min-h-[220px] flex-none basis-full items-end"
             style={{ scrollSnapAlign: "start" }}
           >
-            <div className="stripes absolute inset-0 text-sm">banner promo/produk</div>
+            {p.imageUrl ? (
+              <Image src={p.imageUrl} alt={p.name} fill className="object-cover" />
+            ) : (
+              <div className="stripes absolute inset-0 text-sm">Tidak ada foto</div>
+            )}
             <div
               className="relative w-full px-7 py-6"
               style={{

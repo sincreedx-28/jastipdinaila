@@ -71,7 +71,12 @@ export default async function Home() {
         {all.length > 0 && (
           <section className="mx-auto w-full max-w-5xl px-4 pb-2 pt-8">
             <RecommendationCarousel
-              items={all.map((p) => ({ slug: p.slug, name: p.name, category: p.category }))}
+              items={all.map((p) => ({
+                slug: p.slug,
+                name: p.name,
+                category: p.category,
+                imageUrl: p.images[0]?.url ?? null,
+              }))}
             />
           </section>
         )}
