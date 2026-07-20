@@ -38,7 +38,7 @@ export default async function Home() {
   return (
     <div className="theme-shop flex min-h-screen flex-col">
       <div className="overflow-hidden whitespace-nowrap bg-foreground py-2.5 text-white">
-        <div className="marquee-track inline-block pl-full text-[13px] font-bold tracking-wide">
+        <div className="marquee-track inline-block pl-[100%] text-[13px] font-bold tracking-wide">
           Selamat datang di Jastipdinaila — titip beli tepercaya, kualitas terjaga &nbsp;•&nbsp;
           Cek produk Ready Stock &amp; Pre-Order kami &nbsp;•&nbsp;
         </div>
