@@ -35,6 +35,9 @@ export default async function EditProductPage({
           widthCm: product.widthCm,
           heightCm: product.heightCm,
           stockQty: product.stockQty,
+          group: product.group,
+          category: product.category,
+          variants: product.variants,
         }}
       />
     </div>

@@ -13,7 +13,7 @@ export default async function CheckoutPage() {
     : [];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
       <CheckoutForm isLoggedIn={Boolean(customer)} savedAddresses={savedAddresses} />
     </div>

@@ -24,7 +24,7 @@ export default async function ProductDetailPage({
   const mainImage = product.images[0]?.url ?? null;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
       <main className="mx-auto grid w-full max-w-5xl flex-1 gap-8 px-4 py-8 md:grid-cols-2">
         <div className="space-y-3">
@@ -53,11 +53,16 @@ export default async function ProductDetailPage({
 
         <div className="space-y-4">
           <div>
+            {product.category && (
+              <p className="mb-1 text-sm font-bold tracking-wide text-primary/80">
+                {product.category}
+              </p>
+            )}
             <Badge variant={product.type === "READY" ? "default" : "secondary"}>
               {product.type === "READY" ? "Ready Stock" : "Pre-Order"}
             </Badge>
-            <h1 className="mt-2 text-2xl font-semibold">{product.name}</h1>
-            <p className="mt-1 text-xl font-bold">
+            <h1 className="mt-2 font-heading text-2xl font-bold">{product.name}</h1>
+            <p className="mt-1 text-xl font-extrabold text-primary">
               Rp{product.price.toLocaleString("id-ID")}
             </p>
           </div>
@@ -77,6 +82,7 @@ export default async function ProductDetailPage({
 
           <AddToCartButton
             soldOut={soldOut}
+            variants={product.variants}
             product={{
               productId: product.id,
               slug: product.slug,

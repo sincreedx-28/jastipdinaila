@@ -13,7 +13,7 @@ export default async function AkunLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">{children}</main>
     </div>

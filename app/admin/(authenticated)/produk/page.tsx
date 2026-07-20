@@ -32,6 +32,7 @@ export default async function AdminProductsPage() {
           <TableRow>
             <TableHead></TableHead>
             <TableHead>Nama</TableHead>
+            <TableHead>Kategori</TableHead>
             <TableHead>Tipe</TableHead>
             <TableHead>Harga</TableHead>
             <TableHead>Stok</TableHead>
@@ -56,6 +57,17 @@ export default async function AdminProductsPage() {
                 )}
               </TableCell>
               <TableCell className="font-medium">{p.name}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                {p.group || p.category ? (
+                  <>
+                    {p.group}
+                    {p.group && p.category ? " · " : ""}
+                    {p.category}
+                  </>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
               <TableCell>
                 <Badge variant={p.type === "READY" ? "default" : "secondary"}>
                   {p.type === "READY" ? "Ready" : "PO"}
@@ -91,7 +103,7 @@ export default async function AdminProductsPage() {
           ))}
           {products.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Belum ada produk.
               </TableCell>
             </TableRow>

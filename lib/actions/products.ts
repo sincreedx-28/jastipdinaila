@@ -60,6 +60,12 @@ function parseProductFields(formData: FormData) {
   const stockQtyRaw = formData.get("stockQty");
   const stockQty =
     type === "READY" && stockQtyRaw ? Number(stockQtyRaw) : null;
+  const group = String(formData.get("group") ?? "").trim() || null;
+  const category = String(formData.get("category") ?? "").trim() || null;
+  const variants = String(formData.get("variants") ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
 
   if (!name) throw new Error("Nama produk wajib diisi.");
   if (!Number.isFinite(price) || price <= 0)
@@ -81,6 +87,9 @@ function parseProductFields(formData: FormData) {
     widthCm: Math.round(widthCm),
     heightCm: Math.round(heightCm),
     stockQty,
+    group,
+    category,
+    variants,
   };
 }
 

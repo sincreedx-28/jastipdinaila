@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/cart";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 export function CartView() {
@@ -20,63 +19,96 @@ export function CartView() {
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-      <h1 className="mb-4 text-xl font-semibold">Keranjang</h1>
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
+      <h1 className="mb-6 font-heading text-2xl font-bold">Keranjang Belanja</h1>
 
       {!hydrated ? null : items.length === 0 ? (
         <div className="py-16 text-center text-muted-foreground">
-          <p>Keranjang kamu masih kosong.</p>
-          <Button className="mt-4" render={<Link href="/produk">Lihat Produk</Link>} />
+          <p className="mb-4">Keranjangmu masih kosong.</p>
+          <Button render={<Link href="/produk">Mulai Belanja</Link>} />
         </div>
       ) : (
-        <div className="space-y-4">
-          {items.map((item) => (
-            <div
-              key={item.productId}
-              className="flex items-center gap-4 rounded-lg border p-3"
-            >
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-muted">
-                {item.imageUrl && (
-                  <Image src={item.imageUrl} alt="" fill className="object-cover" />
-                )}
+        <div className="flex flex-wrap items-start gap-9">
+          <div className="flex min-w-[280px] flex-1 flex-col gap-3.5">
+            {items.map((item) => (
+              <div
+                key={`${item.productId}:${item.variant ?? ""}`}
+                className="flex gap-3.5 rounded-xl border bg-card p-3.5"
+              >
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  {item.imageUrl && (
+                    <Image src={item.imageUrl} alt="" fill className="object-cover" />
+                  )}
+                </div>
+                <div className="flex flex-1 flex-col gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <Badge
+                        variant={item.type === "READY" ? "default" : "secondary"}
+                        className="mb-1"
+                      >
+                        {item.type === "READY" ? "Ready" : "PO"}
+                      </Badge>
+                      <p className="text-sm font-bold">{item.name}</p>
+                      {item.variant && (
+                        <p className="text-xs text-muted-foreground">
+                          Varian: {item.variant}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.productId, item.variant)}
+                      className="shrink-0 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                  <div className="mt-auto flex items-center justify-between">
+                    <div className="flex items-center rounded-lg border">
+                      <button
+                        type="button"
+                        onClick={() => setQty(item.productId, item.variant, item.qty - 1)}
+                        className="flex h-8 w-8 items-center justify-center text-base font-bold"
+                      >
+                        −
+                      </button>
+                      <div className="w-7 text-center text-sm font-bold">{item.qty}</div>
+                      <button
+                        type="button"
+                        onClick={() => setQty(item.productId, item.variant, item.qty + 1)}
+                        className="flex h-8 w-8 items-center justify-center text-base font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="font-bold text-primary">
+                      Rp{(item.price * item.qty).toLocaleString("id-ID")}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <Badge
-                  variant={item.type === "READY" ? "default" : "secondary"}
-                  className="mb-1"
-                >
-                  {item.type === "READY" ? "Ready" : "PO"}
-                </Badge>
-                <p className="text-sm font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Rp{item.price.toLocaleString("id-ID")}
-                </p>
-              </div>
-              <Input
-                type="number"
-                min={1}
-                value={item.qty}
-                onChange={(e) => setQty(item.productId, Number(e.target.value) || 1)}
-                className="w-16"
-              />
-              <Button variant="ghost" size="sm" onClick={() => removeItem(item.productId)}>
-                Hapus
-              </Button>
-            </div>
-          ))}
-
-          <div className="flex items-center justify-between border-t pt-4">
-            <span className="text-sm text-muted-foreground">Subtotal barang</span>
-            <span className="text-lg font-semibold">
-              Rp{subtotal.toLocaleString("id-ID")}
-            </span>
+            ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Ongkos kirim dihitung di halaman checkout.
-          </p>
-          <Button className="w-full" onClick={() => router.push("/checkout")}>
-            Lanjut ke Checkout
-          </Button>
+
+          <div className="sticky top-24 w-full min-w-[260px] flex-1 rounded-xl bg-background p-5 sm:max-w-[300px]">
+            <div className="mb-4 font-heading text-lg font-bold">Ringkasan Pesanan</div>
+            <div className="mb-2 flex justify-between text-sm">
+              <span>Subtotal</span>
+              <span>Rp{subtotal.toLocaleString("id-ID")}</span>
+            </div>
+            <div className="mb-4 flex justify-between text-sm">
+              <span>Ongkir</span>
+              <span>Dihitung saat checkout</span>
+            </div>
+            <div className="mb-5 flex justify-between border-t pt-3 text-lg font-extrabold">
+              <span>Total</span>
+              <span>Rp{subtotal.toLocaleString("id-ID")}</span>
+            </div>
+            <Button className="w-full" onClick={() => router.push("/checkout")}>
+              Checkout
+            </Button>
+          </div>
         </div>
       )}
     </main>

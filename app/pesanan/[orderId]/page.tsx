@@ -39,7 +39,7 @@ export default async function OrderStatusPage({
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
       <ClearCartOnMount />
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-8">
@@ -55,7 +55,8 @@ export default async function OrderStatusPage({
             {order.items.map((item) => (
               <div key={item.id} className="flex justify-between text-sm">
                 <span>
-                  {item.productNameSnapshot} x{item.qty}
+                  {item.productNameSnapshot}
+                  {item.variantSnapshot ? ` (${item.variantSnapshot})` : ""} x{item.qty}
                 </span>
                 <span>Rp{item.lineTotal.toLocaleString("id-ID")}</span>
               </div>

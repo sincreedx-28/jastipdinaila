@@ -10,6 +10,7 @@ export type ProductCardData = {
   price: number;
   imageUrl: string | null;
   stockQty: number | null;
+  category?: string | null;
 };
 
 export function ProductCard({ product }: { product: ProductCardData }) {
@@ -45,8 +46,15 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           )}
         </div>
         <CardContent className="space-y-1 pb-4">
+          {product.category && (
+            <p className="text-xs font-semibold tracking-wide text-primary/80">
+              {product.category}
+            </p>
+          )}
           <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
-          <p className="text-sm font-semibold">Rp{product.price.toLocaleString("id-ID")}</p>
+          <p className="text-sm font-semibold text-primary">
+            Rp{product.price.toLocaleString("id-ID")}
+          </p>
         </CardContent>
       </Card>
     </Link>
