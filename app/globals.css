@@ -140,6 +140,16 @@
   --ring: oklch(55% 0.15 10);
   --font-heading: var(--font-libre-baskerville);
   --font-sans: var(--font-nunito-sans);
+  /* font-family is inherited, and html{@apply font-sans} already resolved
+     to Geist at the root — redefining the --font-sans variable alone
+     doesn't retroactively change that. Re-applying font-family here forces
+     descendants to actually pick up Nunito Sans instead. */
+  font-family: var(--font-nunito-sans), sans-serif;
+}
+.theme-shop h1,
+.theme-shop h2,
+.theme-shop .font-heading {
+  font-family: var(--font-libre-baskerville), serif;
 }
 @keyframes shop-marquee {
   from {
