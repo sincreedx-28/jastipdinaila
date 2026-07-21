@@ -25,7 +25,7 @@ export function CartView() {
       {!hydrated ? null : items.length === 0 ? (
         <div className="py-16 text-center text-muted-foreground">
           <p className="mb-4">Your cart is empty.</p>
-          <Button render={<Link href="/produk">Start Shopping</Link>} />
+          <Button className="rounded-full" render={<Link href="/produk">Start Shopping</Link>} />
         </div>
       ) : (
         <div className="flex flex-wrap items-start gap-9">
