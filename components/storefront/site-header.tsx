@@ -18,11 +18,11 @@ export function SiteHeader({ customer }: { customer?: Customer | null }) {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
         <Link href="/" className="shrink-0">
           <Image
-            src="/logo-jastipdinaila.jpg"
+            src="/logo-jastipdinaila-transparent.png"
             alt="jastipdinaila"
             height={44}
-            width={160}
-            className="h-11 w-auto object-contain mix-blend-multiply"
+            width={112}
+            className="h-11 w-auto object-contain"
             priority
           />
         </Link>
