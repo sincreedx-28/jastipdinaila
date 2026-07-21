@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Customer } from "@/lib/generated/prisma/client";
+import { HeaderNav } from "@/components/storefront/header-nav";
 import { LoginButton } from "@/components/storefront/login-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,18 +14,20 @@ import { signOutCustomer } from "@/lib/actions/customer-auth";
 
 export function SiteHeader({ customer }: { customer?: Customer | null }) {
   return (
-    <header className="border-b bg-background">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <Link href="/" className="text-lg font-semibold">
-          Jastipdinaila
+    <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
+        <Link href="/" className="shrink-0">
+          <Image
+            src="/logo-jastipdinaila.jpg"
+            alt="jastipdinaila"
+            height={44}
+            width={160}
+            className="h-11 w-auto object-contain mix-blend-multiply"
+            priority
+          />
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/produk" className="text-muted-foreground hover:text-foreground">
-            Semua Produk
-          </Link>
-          <Link href="/keranjang" className="text-muted-foreground hover:text-foreground">
-            Keranjang
-          </Link>
+        <div className="flex items-center gap-6">
+          <HeaderNav />
           {customer ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -41,7 +45,7 @@ export function SiteHeader({ customer }: { customer?: Customer | null }) {
           ) : (
             <LoginButton />
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

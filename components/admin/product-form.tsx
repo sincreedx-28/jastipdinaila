@@ -29,6 +29,9 @@ type ProductFormValues = {
   widthCm: number;
   heightCm: number;
   stockQty: number | null;
+  group?: string | null;
+  category?: string | null;
+  variants?: string[];
 };
 
 export function ProductForm({
@@ -60,6 +63,45 @@ export function ProductForm({
           name="description"
           defaultValue={defaultValues?.description}
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="group">Grup</Label>
+          <Input
+            id="group"
+            name="group"
+            placeholder="Skincare, Fashion, dll"
+            defaultValue={defaultValues?.group ?? ""}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="category">Kategori</Label>
+          <Input
+            id="category"
+            name="category"
+            placeholder="Toner, Top, dll"
+            defaultValue={defaultValues?.category ?? ""}
+          />
+        </div>
+      </div>
+      <p className="-mt-4 text-xs text-muted-foreground">
+        Grup = pengelompokan besar di menu (mis. Skincare), Kategori = filter yang lebih
+        spesifik di dalamnya (mis. Toner). Kosongkan kalau belum mau dikategorikan.
+      </p>
+
+      <div className="space-y-2">
+        <Label htmlFor="variants">Varian</Label>
+        <Input
+          id="variants"
+          name="variants"
+          placeholder="S, M, L (pisahkan dengan koma)"
+          defaultValue={defaultValues?.variants?.join(", ") ?? ""}
+        />
+        <p className="text-xs text-muted-foreground">
+          Cuma label pilihan (ukuran/warna/dll), harga dan stok tetap sama untuk semua
+          varian. Kosongkan kalau produk ini tidak punya varian.
+        </p>
       </div>
 
       <div className="space-y-2">

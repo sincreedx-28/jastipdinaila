@@ -86,7 +86,8 @@ export default async function AdminOrderDetailPage({
                 <Badge variant="outline" className="mr-2">
                   {item.productTypeSnapshot === "READY" ? "Ready" : "PO"}
                 </Badge>
-                {item.productNameSnapshot} x{item.qty}
+                {item.productNameSnapshot}
+                {item.variantSnapshot ? ` (${item.variantSnapshot})` : ""} x{item.qty}
               </span>
               <span>Rp{item.lineTotal.toLocaleString("id-ID")}</span>
             </div>

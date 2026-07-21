@@ -2,95 +2,134 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SiteFooter } from "@/components/storefront/site-footer";
 import { ProductCard } from "@/components/storefront/product-card";
-import { Button } from "@/components/ui/button";
+import { RecommendationCarousel } from "@/components/storefront/recommendation-carousel";
 
 async function getHomeProducts() {
-  const [ready, po] = await Promise.all([
+  const [featured, groupSource] = await Promise.all([
     prisma.product.findMany({
-      where: { type: "READY", isActive: true },
+      where: { isActive: true },
       include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
       orderBy: { createdAt: "desc" },
-      take: 8,
+      take: 4,
     }),
     prisma.product.findMany({
-      where: { type: "PO", isActive: true },
-      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-      orderBy: { createdAt: "desc" },
-      take: 8,
+      where: { isActive: true },
+      select: { group: true },
     }),
   ]);
-  return { ready, po };
+  return { featured, groupSource };
 }
 
 export default async function Home() {
-  const { ready, po } = await getHomeProducts();
+  const { featured, groupSource } = await getHomeProducts();
   const customer = await getCurrentCustomer();
+  const groups = [
+    ...new Set(groupSource.map((p) => p.group).filter((g): g is string => Boolean(g))),
+  ];
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <SiteHeader customer={customer} />
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-8">
-        {ready.length === 0 && po.length === 0 ? (
-          <p className="py-16 text-center text-muted-foreground">
-            Belum ada produk tersedia saat ini.
-          </p>
-        ) : (
-          <>
-            {ready.length > 0 && (
-              <ProductSection
-                title="Ready Stock"
-                subtitle="Barang sudah tersedia, langsung dikirim"
-                products={ready}
-              />
-            )}
-            {po.length > 0 && (
-              <ProductSection
-                title="Pre-Order"
-                subtitle="Dipesan dulu, diproses sebelum dikirim"
-                products={po}
-              />
-            )}
-          </>
-        )}
-      </main>
-    </div>
-  );
-}
-
-function ProductSection({
-  title,
-  subtitle,
-  products,
-}: {
-  title: string;
-  subtitle: string;
-  products: Awaited<ReturnType<typeof getHomeProducts>>["ready"];
-}) {
-  return (
-    <section className="space-y-4">
-      <div className="flex items-end justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
+    <div className="theme-shop flex min-h-screen flex-col">
+      <div className="overflow-hidden whitespace-nowrap bg-foreground py-2.5 text-white">
+        <div className="marquee-track inline-block pl-[100%] text-[13px] font-bold tracking-wide">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <span key={i}>
+              Selamat datang di Jastipdinaila — titip beli tepercaya, kualitas terjaga
+              &nbsp;•&nbsp; Cek produk Ready Stock &amp; Pre-Order kami &nbsp;•&nbsp;{" "}
+            </span>
+          ))}
         </div>
-        <Button variant="outline" size="sm" render={<Link href="/produk">Lihat Semua</Link>} />
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-        {products.map((p) => (
-          <ProductCard
-            key={p.slug}
-            product={{
-              slug: p.slug,
-              name: p.name,
-              type: p.type,
-              price: p.price,
-              stockQty: p.stockQty,
-              imageUrl: p.images[0]?.url ?? null,
-            }}
-          />
-        ))}
-      </div>
-    </section>
+
+      <SiteHeader customer={customer} />
+      <main className="flex-1">
+        <section className="mx-auto w-full max-w-5xl px-4 pb-2 pt-10 sm:pt-14">
+          <h1 className="mb-4.5 font-heading text-4xl font-bold text-white sm:text-5xl">
+            Your Personal Shopper
+          </h1>
+          {featured.length > 0 && (
+            <RecommendationCarousel
+              items={featured.map((p) => ({
+                slug: p.slug,
+                name: p.name,
+                category: p.category,
+                imageUrl: p.images[0]?.url ?? null,
+              }))}
+            />
+          )}
+        </section>
+
+        {groups.length > 0 && (
+          <section className="mx-auto w-full max-w-5xl px-4 py-8">
+            <div className="flex flex-wrap justify-center gap-3">
+              {groups.map((g) => (
+                <Link
+                  key={g}
+                  href={`/produk?group=${encodeURIComponent(g)}`}
+                  className="rounded-full border border-border bg-card px-4.5 py-2.5 text-sm font-bold text-foreground"
+                >
+                  {g}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mx-auto w-full max-w-5xl px-4 pb-10">
+          <h2 className="mb-6 font-heading text-2xl font-bold">Produk Favorit</h2>
+          {featured.length > 0 ? (
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4">
+              {featured.map((p) => (
+                <ProductCard
+                  key={p.slug}
+                  product={{
+                    slug: p.slug,
+                    name: p.name,
+                    type: p.type,
+                    price: p.price,
+                    stockQty: p.stockQty,
+                    imageUrl: p.images[0]?.url ?? null,
+                    category: p.category,
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-white">Belum ada produk tersedia saat ini.</p>
+          )}
+        </section>
+
+        <section className="mt-2 bg-background px-4 py-12">
+          <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-10">
+            <div className="stripes aspect-[4/3] min-w-[220px] flex-1 basis-[260px] rounded-2xl">
+              foto pemilik usaha
+            </div>
+            <div className="min-w-[280px] flex-[2] basis-[400px]">
+              <h2 className="mb-3 font-heading text-2xl font-bold sm:text-3xl">
+                From heart, For Every Women, For Every Part of You!
+              </h2>
+              <p className="mb-5 max-w-xl text-base leading-relaxed text-muted-foreground">
+                Kami percaya tiap perempuan berhak dapat yang terbaik, dari ujung kepala
+                sampai ujung kaki. Kami hadirkan produk yang kamu butuhkan, dengan harga
+                yang bersahabat, dan keaslian yang terjamin.
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                <span className="rounded-full bg-card px-3.5 py-2 text-[13px] font-bold text-foreground">
+                  ✓ 100% Original
+                </span>
+                <span className="rounded-full bg-card px-3.5 py-2 text-[13px] font-bold text-foreground">
+                  ✓ Affordable
+                </span>
+                <span className="rounded-full bg-card px-3.5 py-2 text-[13px] font-bold text-foreground">
+                  ✓ Kemasan Aman
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

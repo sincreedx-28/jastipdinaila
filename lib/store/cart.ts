@@ -12,8 +12,15 @@ export type CartItem = {
   widthCm: number;
   heightCm: number;
   imageUrl: string | null;
+  // Two variants of the same product are separate cart lines — null means
+  // "this product has no variants".
+  variant: string | null;
   qty: number;
 };
+
+function sameLine(a: { productId: string; variant: string | null }, b: typeof a) {
+  return a.productId === b.productId && a.variant === b.variant;
+}
 
 type CartState = {
   items: CartItem[];
@@ -23,8 +30,8 @@ type CartState = {
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
   addItem: (item: Omit<CartItem, "qty">, qty: number) => void;
-  removeItem: (productId: string) => void;
-  setQty: (productId: string, qty: number) => void;
+  removeItem: (productId: string, variant: string | null) => void;
+  setQty: (productId: string, variant: string | null, qty: number) => void;
   clear: () => void;
 };
 
@@ -36,24 +43,24 @@ export const useCartStore = create<CartState>()(
       setHasHydrated: (value) => set({ hasHydrated: value }),
       addItem: (item, qty) =>
         set((state) => {
-          const existing = state.items.find((i) => i.productId === item.productId);
+          const existing = state.items.find((i) => sameLine(i, item));
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.productId === item.productId ? { ...i, qty: i.qty + qty } : i
+                sameLine(i, item) ? { ...i, qty: i.qty + qty } : i
               ),
             };
           }
           return { items: [...state.items, { ...item, qty }] };
         }),
-      removeItem: (productId) =>
+      removeItem: (productId, variant) =>
         set((state) => ({
-          items: state.items.filter((i) => i.productId !== productId),
+          items: state.items.filter((i) => !sameLine(i, { productId, variant })),
         })),
-      setQty: (productId, qty) =>
+      setQty: (productId, variant, qty) =>
         set((state) => ({
           items: state.items.map((i) =>
-            i.productId === productId ? { ...i, qty: Math.max(1, qty) } : i
+            sameLine(i, { productId, variant }) ? { ...i, qty: Math.max(1, qty) } : i
           ),
         })),
       clear: () => set({ items: [] }),

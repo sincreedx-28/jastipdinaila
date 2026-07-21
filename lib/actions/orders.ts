@@ -89,6 +89,7 @@ export async function createOrder(
     productPriceSnapshot: number;
     productTypeSnapshot: "READY" | "PO";
     weightGramsSnapshot: number;
+    variantSnapshot: string | null;
     qty: number;
     lineTotal: number;
   }[] = [];
@@ -119,6 +120,7 @@ export async function createOrder(
       productPriceSnapshot: product.price,
       productTypeSnapshot: product.type,
       weightGramsSnapshot: product.weightGrams,
+      variantSnapshot: cartItem.variant ?? null,
       qty: cartItem.qty,
       lineTotal,
     });

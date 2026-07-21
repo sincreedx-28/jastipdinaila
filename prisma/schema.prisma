@@ -51,6 +51,17 @@ model Product {
 
   isActive Boolean @default(true)
 
+  // Free-text taxonomy (not an enum) so new categories/groups don't need a
+  // migration. Null/empty means "uncategorized" — existing products are left
+  // this way until an admin assigns them. group is the top-level nav grouping
+  // (e.g. "Skincare"), category the finer filter within it (e.g. "Toner").
+  group    String?
+  category String?
+
+  // Simple label-only variants (e.g. size/shade) — no separate price or
+  // stock per variant, matching how the storefront design treats them.
+  variants String[] @default([])
+
   images     ProductImage[]
   orderItems OrderItem[]
 
@@ -183,6 +194,8 @@ model OrderItem {
   productPriceSnapshot Int
   productTypeSnapshot  ProductType
   weightGramsSnapshot  Int
+  // Which variant (size/shade/etc) the customer picked in the cart, if any.
+  variantSnapshot String?
 
   qty       Int
   lineTotal Int

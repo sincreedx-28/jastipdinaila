@@ -117,6 +117,68 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Pink/rose storefront theme — applied only via the .theme-shop class on
+   customer-facing pages (Home/Produk/Keranjang/Checkout/Akun/Pesanan). The
+   admin panel intentionally keeps the neutral theme above untouched. */
+.theme-shop {
+  --background: #f1a2b5;
+  --foreground: oklch(24% 0.02 40);
+  --card: oklch(99% 0.005 70);
+  --card-foreground: oklch(24% 0.02 40);
+  --popover: oklch(99% 0.005 70);
+  --popover-foreground: oklch(24% 0.02 40);
+  --primary: oklch(55% 0.15 10);
+  --primary-foreground: oklch(99% 0.005 70);
+  --secondary: oklch(99% 0.005 70);
+  --secondary-foreground: oklch(35% 0.02 40);
+  --muted: oklch(93% 0.02 60);
+  --muted-foreground: oklch(50% 0.02 40);
+  --accent: oklch(96% 0.03 20);
+  --accent-foreground: oklch(24% 0.02 40);
+  --border: oklch(88% 0.02 60);
+  --input: oklch(88% 0.02 60);
+  --ring: oklch(55% 0.15 10);
+  --font-heading: var(--font-libre-baskerville);
+  --font-sans: var(--font-nunito-sans);
+  /* font-family is inherited, and html{@apply font-sans} already resolved
+     to Geist at the root — redefining the --font-sans variable alone
+     doesn't retroactively change that. Re-applying font-family here forces
+     descendants to actually pick up Nunito Sans instead. */
+  font-family: var(--font-nunito-sans), sans-serif;
+}
+.theme-shop h1,
+.theme-shop h2,
+.theme-shop .font-heading {
+  font-family: var(--font-libre-baskerville), serif;
+}
+@keyframes shop-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+.theme-shop .marquee-track {
+  animation: shop-marquee 18s linear infinite;
+}
+.theme-shop .stripes {
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(93% 0.02 60) 0px,
+    oklch(93% 0.02 60) 10px,
+    oklch(90% 0.025 60) 10px,
+    oklch(90% 0.025 60) 20px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: oklch(55% 0.02 40);
+  font-family: ui-monospace, monospace;
+  text-align: center;
+  padding: 8px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
