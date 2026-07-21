@@ -24,10 +24,10 @@ export default async function EditAddressPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Edit Alamat</h1>
+      <h1 className="text-xl font-semibold">Edit Address</h1>
       <AddressForm
         action={updateAddressWithId}
-        submitLabel="Simpan Perubahan"
+        submitLabel="Save Changes"
         defaultValues={{
           label: address.label,
           recipientName: address.recipientName,

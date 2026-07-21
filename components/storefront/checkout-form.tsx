@@ -108,7 +108,7 @@ export function CheckoutForm({
 
         {isLoggedIn && savedAddresses.length > 0 && (
           <section className="space-y-2">
-            <h2 className="text-sm font-medium">Alamat Tersimpan</h2>
+            <h2 className="text-sm font-medium">Saved Addresses</h2>
             <div className="grid gap-2">
               {savedAddresses.map((a) => (
                 <button
@@ -135,16 +135,16 @@ export function CheckoutForm({
                   usingNewAddress ? "border-primary ring-1 ring-primary" : ""
                 }`}
               >
-                + Alamat baru
+                + New Address
               </button>
             </div>
           </section>
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-medium">Data Pelanggan</h2>
+          <h2 className="text-sm font-medium">Customer Information</h2>
           <div className="space-y-2">
-            <Label htmlFor="customerName">Nama Lengkap</Label>
+            <Label htmlFor="customerName">Full Name</Label>
             <Input
               id="customerName"
               name="customerName"
@@ -155,7 +155,7 @@ export function CheckoutForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="customerPhone">Nomor HP / WhatsApp</Label>
+            <Label htmlFor="customerPhone">Phone / WhatsApp Number</Label>
             <Input
               id="customerPhone"
               name="customerPhone"
@@ -168,9 +168,9 @@ export function CheckoutForm({
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-sm font-medium">Alamat Pengiriman</h2>
+          <h2 className="text-sm font-medium">Shipping Address</h2>
           <div className="space-y-2">
-            <Label htmlFor="shippingAddress">Alamat Lengkap (jalan, no rumah, RT/RW)</Label>
+            <Label htmlFor="shippingAddress">Full Address (street, house no., RT/RW)</Label>
             <Textarea
               id="shippingAddress"
               name="shippingAddress"
@@ -181,7 +181,7 @@ export function CheckoutForm({
             />
           </div>
           <div className="space-y-2">
-            <Label>Kecamatan / Kota Tujuan</Label>
+            <Label>Destination District / City</Label>
             <DestinationPicker
               key={selectedAddressId}
               defaultValue={destination ?? undefined}
@@ -200,26 +200,26 @@ export function CheckoutForm({
                 checked={saveAddress}
                 onChange={(e) => setSaveAddress(e.target.checked)}
               />
-              Simpan alamat ini untuk order berikutnya
+              Save this address for next order
             </label>
           )}
           {isLoggedIn && usingNewAddress && saveAddress && (
             <div className="space-y-2">
-              <Label htmlFor="saveAddressLabel">Label alamat (mis. Rumah, Kantor)</Label>
+              <Label htmlFor="saveAddressLabel">Address label (e.g. Home, Office)</Label>
               <Input
                 id="saveAddressLabel"
                 name="saveAddressLabel"
                 className="bg-card"
                 value={saveAddressLabel}
                 onChange={(e) => setSaveAddressLabel(e.target.value)}
-                placeholder="Rumah"
+                placeholder="Home"
               />
             </div>
           )}
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-medium">Pilih Kurir</h2>
+          <h2 className="text-sm font-medium">Choose Courier</h2>
           <ShippingMethodPicker
             destinationId={destination?.id ?? null}
             cart={items}
@@ -229,11 +229,11 @@ export function CheckoutForm({
 
         <section className="space-y-2 rounded-lg border bg-card p-4">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal barang</span>
+            <span className="text-muted-foreground">Item Subtotal</span>
             <span>Rp{subtotal.toLocaleString("id-ID")}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Ongkos kirim</span>
+            <span className="text-muted-foreground">Shipping Cost</span>
             <span>{rate ? `Rp${shippingCost.toLocaleString("id-ID")}` : "-"}</span>
           </div>
           <div className="flex justify-between border-t pt-2 font-semibold">
@@ -246,10 +246,10 @@ export function CheckoutForm({
 
         <Button type="submit" className="w-full" disabled={pending || !canSubmit}>
           {pending
-            ? "Memproses..."
+            ? "Processing..."
             : !canSubmit
-              ? "Pilih tujuan & kurir dulu"
-              : "Buat Pesanan"}
+              ? "Choose destination & courier first"
+              : "Place Order"}
         </Button>
       </form>
     </main>

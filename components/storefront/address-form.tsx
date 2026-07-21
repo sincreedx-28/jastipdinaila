@@ -58,17 +58,17 @@ export function AddressForm({
       />
 
       <div className="space-y-2">
-        <Label htmlFor="label">Label Alamat</Label>
+        <Label htmlFor="label">Address Label</Label>
         <Input
           id="label"
           name="label"
-          placeholder="Rumah, Kantor, dll"
+          placeholder="Home, Office, etc."
           defaultValue={defaultValues?.label}
           required
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="recipientName">Nama Penerima</Label>
+        <Label htmlFor="recipientName">Recipient Name</Label>
         <Input
           id="recipientName"
           name="recipientName"
@@ -77,7 +77,7 @@ export function AddressForm({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="recipientPhone">Nomor HP / WhatsApp</Label>
+        <Label htmlFor="recipientPhone">Phone / WhatsApp Number</Label>
         <Input
           id="recipientPhone"
           name="recipientPhone"
@@ -86,18 +86,18 @@ export function AddressForm({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="address">Alamat Lengkap (jalan, no rumah, RT/RW)</Label>
+        <Label htmlFor="address">Full Address (street, house no., RT/RW)</Label>
         <Textarea id="address" name="address" defaultValue={defaultValues?.address} required />
       </div>
       <div className="space-y-2">
-        <Label>Kecamatan / Kota Tujuan</Label>
+        <Label>Destination District / City</Label>
         <DestinationPicker defaultValue={destination ?? undefined} onSelect={setDestination} />
       </div>
 
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Menyimpan..." : submitLabel}
+        {pending ? "Saving..." : submitLabel}
       </Button>
     </form>
   );

@@ -32,14 +32,14 @@ export function SiteHeader({ customer }: { customer?: Customer | null }) {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="rounded-full">
                     {customer.name}
                   </Button>
                 }
               />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem render={<Link href="/akun">Alamat Saya</Link>} />
-                <DropdownMenuItem onClick={signOutCustomer}>Keluar</DropdownMenuItem>
+                <DropdownMenuItem render={<Link href="/akun">My Addresses</Link>} />
+                <DropdownMenuItem onClick={signOutCustomer}>Logout</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

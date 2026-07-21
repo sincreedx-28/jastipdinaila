@@ -23,7 +23,7 @@ export function AddToCartButton({
   if (soldOut) {
     return (
       <Button disabled className="w-full">
-        Stok Habis
+        Out of Stock
       </Button>
     );
   }
@@ -32,7 +32,7 @@ export function AddToCartButton({
     <div className="flex flex-col gap-4">
       {variants.length > 0 && (
         <div>
-          <div className="mb-2 text-sm font-bold">Varian</div>
+          <div className="mb-2 text-sm font-bold">Variant</div>
           <div className="flex flex-wrap gap-2.5">
             {variants.map((v) => (
               <button
@@ -53,7 +53,7 @@ export function AddToCartButton({
       )}
 
       <div className="flex items-center gap-4.5">
-        <div className="text-sm font-bold">Jumlah</div>
+        <div className="text-sm font-bold">Quantity</div>
         <div className="flex items-center rounded-lg border">
           <button
             type="button"
@@ -78,10 +78,10 @@ export function AddToCartButton({
           className="flex-1"
           onClick={() => {
             addItem({ ...product, variant }, qty);
-            toast.success(`${product.name} ditambahkan ke keranjang`);
+            toast.success(`${product.name} added to cart`);
           }}
         >
-          Tambah ke Keranjang
+          Add to Cart
         </Button>
         <Button
           variant="outline"
@@ -90,7 +90,7 @@ export function AddToCartButton({
             router.push("/keranjang");
           }}
         >
-          Beli Sekarang
+          Buy Now
         </Button>
       </div>
     </div>

@@ -4,7 +4,7 @@ export function SiteFooter() {
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4">
         <div className="font-heading text-xl font-bold">jastipdinaila</div>
         <div className="text-[13px] text-white/75">
-          © {new Date().getFullYear()} jastipdinaila. Titip beli tepercaya, kualitas terjaga.
+          © {new Date().getFullYear()} jastipdinaila. Trusted shopping, guaranteed quality.
         </div>
       </div>
     </footer>

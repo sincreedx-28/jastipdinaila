@@ -16,8 +16,14 @@ export function LoginButton() {
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={handleLogin}>
-      Masuk dengan Google
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="rounded-full"
+      onClick={handleLogin}
+    >
+      Sign in with Google
     </Button>
   );
 }

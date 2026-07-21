@@ -29,22 +29,22 @@ function ShippingMethodPickerInner({
       if (!result.ok) {
         setError(
           result.reason === "quota_exceeded"
-            ? "Ongkos kirim otomatis sedang tidak tersedia (kuota harian habis)."
-            : "Gagal mengambil ongkos kirim. Coba lagi atau hubungi admin."
+            ? "Automatic shipping rates are currently unavailable (daily quota reached)."
+            : "Failed to get shipping rates. Try again or contact admin."
         );
         setWhatsappUrl(result.whatsappUrl ?? null);
         return;
       }
       setRates(result.rates);
       if (result.rates.length === 0) {
-        setError("Tidak ada layanan kurir tersedia untuk tujuan ini.");
+        setError("No courier service available for this destination.");
       }
     });
     // Runs once per mount (parent remounts this via `key` on destination change).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <p className="text-sm">Menghitung ongkir...</p>;
+  if (loading) return <p className="text-sm">Calculating shipping...</p>;
   if (error) {
     return (
       <div className="space-y-1">
@@ -56,7 +56,7 @@ function ShippingMethodPickerInner({
             rel="noreferrer"
             className="text-sm text-primary underline"
           >
-            Hubungi admin via WhatsApp untuk konfirmasi ongkir
+            Contact admin via WhatsApp to confirm shipping cost
           </a>
         )}
       </div>
@@ -87,7 +87,7 @@ function ShippingMethodPickerInner({
                   {rate.courierName} — {rate.service}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {rate.description} · Estimasi {rate.etd} hari
+                  {rate.description} · Est. {rate.etd} days
                 </p>
               </div>
             </div>
@@ -109,9 +109,7 @@ export function ShippingMethodPicker({
   onSelect: (rate: ShippingRateOption | null) => void;
 }) {
   if (!destinationId) {
-    return (
-      <p className="text-sm">Pilih tujuan pengiriman dulu untuk melihat opsi kurir.</p>
-    );
+    return <p className="text-sm">Choose a shipping destination first to see courier options.</p>;
   }
 
   return (

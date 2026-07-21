@@ -30,7 +30,7 @@ export default async function ProductDetailPage({
       <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
         <Link href="/produk" className="mb-5 inline-block text-sm font-bold text-foreground">
-          ← Kembali ke Katalog
+          ← Back to Catalog
         </Link>
         <div className="grid gap-8 md:grid-cols-2">
         <div className="space-y-3">
@@ -39,7 +39,7 @@ export default async function ProductDetailPage({
               <Image src={mainImage} alt={product.name} fill className="object-cover" />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                Tidak ada foto
+                No photo
               </div>
             )}
           </div>
@@ -75,8 +75,8 @@ export default async function ProductDetailPage({
 
           {product.type === "PO" && (
             <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-              Produk ini dibuat/disiapkan setelah pesanan masuk. Butuh waktu proses
-              sebelum dikirim.
+              This product is made/prepared after the order is placed. It needs
+              processing time before shipping.
             </p>
           )}
 

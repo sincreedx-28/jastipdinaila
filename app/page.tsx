@@ -35,8 +35,8 @@ export default async function Home() {
         <div className="marquee-track inline-block pl-[100%] text-[13px] font-bold tracking-wide">
           {Array.from({ length: 3 }).map((_, i) => (
             <span key={i}>
-              Selamat datang di Jastipdinaila — titip beli tepercaya, kualitas terjaga
-              &nbsp;•&nbsp; Cek produk Ready Stock &amp; Pre-Order kami &nbsp;•&nbsp;{" "}
+              Welcome to Jastipdinaila — trusted shopping, guaranteed quality
+              &nbsp;•&nbsp; Check out our Ready Stock &amp; Pre-Order products &nbsp;•&nbsp;{" "}
             </span>
           ))}
         </div>
@@ -77,7 +77,7 @@ export default async function Home() {
         )}
 
         <section className="mx-auto w-full max-w-5xl px-4 pb-10">
-          <h2 className="mb-6 font-heading text-2xl font-bold">Produk Favorit</h2>
+          <h2 className="mb-6 font-heading text-2xl font-bold">Featured Products</h2>
           {featured.length > 0 ? (
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4">
               {featured.map((p) => (
@@ -96,23 +96,23 @@ export default async function Home() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-white">Belum ada produk tersedia saat ini.</p>
+            <p className="text-center text-white">No products available right now.</p>
           )}
         </section>
 
         <section className="mt-2 bg-background px-4 py-12">
           <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-10">
             <div className="stripes aspect-[4/3] min-w-[220px] flex-1 basis-[260px] rounded-2xl">
-              foto pemilik usaha
+              owner photo
             </div>
             <div className="min-w-[280px] flex-[2] basis-[400px]">
               <h2 className="mb-3 font-heading text-2xl font-bold sm:text-3xl">
                 From heart, For Every Women, For Every Part of You!
               </h2>
               <p className="mb-5 max-w-xl text-base leading-relaxed text-muted-foreground">
-                Kami percaya tiap perempuan berhak dapat yang terbaik, dari ujung kepala
-                sampai ujung kaki. Kami hadirkan produk yang kamu butuhkan, dengan harga
-                yang bersahabat, dan keaslian yang terjamin.
+                We believe every woman deserves the best, from head to toe. We bring you
+                the products you need, at prices you&apos;ll love, with guaranteed
+                authenticity.
               </p>
               <div className="flex flex-wrap gap-2.5">
                 <span className="rounded-full bg-card px-3.5 py-2 text-[13px] font-bold text-foreground">
@@ -122,7 +122,7 @@ export default async function Home() {
                   ✓ Affordable
                 </span>
                 <span className="rounded-full bg-card px-3.5 py-2 text-[13px] font-bold text-foreground">
-                  ✓ Kemasan Aman
+                  ✓ Secure Packaging
                 </span>
               </div>
             </div>

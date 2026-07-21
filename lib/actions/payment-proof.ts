@@ -59,20 +59,20 @@ export async function uploadPaymentProof(
 ): Promise<UploadProofState> {
   const file = formData.get("proof");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Pilih file bukti transfer terlebih dahulu." };
+    return { error: "Choose a payment proof file first." };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "Ukuran file maksimal 5MB." };
+    return { error: "Maximum file size is 5MB." };
   }
 
   const buffer = new Uint8Array(await file.arrayBuffer());
   const sniffed = sniffImageType(buffer);
   if (!sniffed) {
-    return { error: "File harus berupa gambar (JPEG, PNG, WebP, atau GIF)." };
+    return { error: "File must be an image (JPEG, PNG, WebP, or GIF)." };
   }
 
   const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order) return { error: "Pesanan tidak ditemukan." };
+  if (!order) return { error: "Order not found." };
 
   const supabase = await createClient();
   const path = `${orderId}/${Date.now()}.${sniffed.ext}`;
@@ -82,7 +82,7 @@ export async function uploadPaymentProof(
     .upload(path, buffer, { upsert: true, contentType: sniffed.mime });
 
   if (uploadError) {
-    return { error: `Gagal upload: ${uploadError.message}` };
+    return { error: `Upload failed: ${uploadError.message}` };
   }
 
   const { data } = supabase.storage.from(PAYMENT_PROOF_BUCKET).getPublicUrl(path);

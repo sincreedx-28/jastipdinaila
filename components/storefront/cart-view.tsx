@@ -20,12 +20,12 @@ export function CartView() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
-      <h1 className="mb-6 font-heading text-2xl font-bold">Keranjang Belanja</h1>
+      <h1 className="mb-6 font-heading text-2xl font-bold">Shopping Cart</h1>
 
       {!hydrated ? null : items.length === 0 ? (
         <div className="py-16 text-center text-muted-foreground">
-          <p className="mb-4">Keranjangmu masih kosong.</p>
-          <Button render={<Link href="/produk">Mulai Belanja</Link>} />
+          <p className="mb-4">Your cart is empty.</p>
+          <Button render={<Link href="/produk">Start Shopping</Link>} />
         </div>
       ) : (
         <div className="flex flex-wrap items-start gap-9">
@@ -52,7 +52,7 @@ export function CartView() {
                       <p className="text-sm font-bold">{item.name}</p>
                       {item.variant && (
                         <p className="text-xs text-muted-foreground">
-                          Varian: {item.variant}
+                          Variant: {item.variant}
                         </p>
                       )}
                     </div>
@@ -61,7 +61,7 @@ export function CartView() {
                       onClick={() => removeItem(item.productId, item.variant)}
                       className="shrink-0 text-xs font-semibold text-muted-foreground hover:text-foreground"
                     >
-                      Hapus
+                      Remove
                     </button>
                   </div>
                   <div className="mt-auto flex items-center justify-between">
@@ -92,14 +92,14 @@ export function CartView() {
           </div>
 
           <div className="sticky top-24 w-full min-w-[260px] flex-1 rounded-xl bg-background p-5 sm:max-w-[300px]">
-            <div className="mb-4 font-heading text-lg font-bold">Ringkasan Pesanan</div>
+            <div className="mb-4 font-heading text-lg font-bold">Order Summary</div>
             <div className="mb-2 flex justify-between text-sm">
               <span>Subtotal</span>
               <span>Rp{subtotal.toLocaleString("id-ID")}</span>
             </div>
             <div className="mb-4 flex justify-between text-sm">
-              <span>Ongkir</span>
-              <span>Dihitung saat checkout</span>
+              <span>Shipping</span>
+              <span>Calculated at checkout</span>
             </div>
             <div className="mb-5 flex justify-between border-t pt-3 text-lg font-extrabold">
               <span>Total</span>

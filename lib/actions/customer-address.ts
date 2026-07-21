@@ -19,10 +19,10 @@ function parseAddressFields(formData: FormData) {
   const rajaongkirDestinationId = String(formData.get("rajaongkirDestinationId") ?? "").trim();
 
   if (!label || !recipientName || !recipientPhone || !address) {
-    throw new Error("Semua field wajib diisi.");
+    throw new Error("All fields are required.");
   }
   if (!district || !city || !province || !postalCode || !rajaongkirDestinationId) {
-    throw new Error("Pilih tujuan pengiriman dari daftar yang muncul.");
+    throw new Error("Choose a shipping destination from the list that appears.");
   }
 
   return {
@@ -53,7 +53,7 @@ export async function createAddress(
       data: { ...fields, customerId: customer.id, isDefault: isFirst },
     });
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Gagal menyimpan alamat." };
+    return { error: err instanceof Error ? err.message : "Failed to save address." };
   }
 
   revalidatePath("/akun");
@@ -77,10 +77,10 @@ export async function updateAddress(
       data: fields,
     });
     if (result.count === 0) {
-      return { error: "Alamat tidak ditemukan." };
+      return { error: "Address not found." };
     }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Gagal menyimpan alamat." };
+    return { error: err instanceof Error ? err.message : "Failed to save address." };
   }
 
   revalidatePath("/akun");

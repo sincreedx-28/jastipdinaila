@@ -28,7 +28,7 @@ async function generateOrderNumber() {
     const exists = await prisma.order.findUnique({ where: { orderNumber: candidate } });
     if (!exists) return candidate;
   }
-  throw new Error("Gagal membuat nomor pesanan, coba lagi.");
+  throw new Error("Failed to generate order number, please try again.");
 }
 
 export async function createOrder(
@@ -47,31 +47,31 @@ export async function createOrder(
   const courierService = String(formData.get("courierService") ?? "").trim();
   const cartJson = String(formData.get("cart") ?? "[]");
   const saveAddress = formData.get("saveAddress") === "on";
-  const saveAddressLabel = String(formData.get("saveAddressLabel") ?? "").trim() || "Alamat Baru";
+  const saveAddressLabel = String(formData.get("saveAddressLabel") ?? "").trim() || "New Address";
 
   if (!customerName || !customerPhone) {
-    return { error: "Nama dan nomor HP wajib diisi." };
+    return { error: "Name and phone number are required." };
   }
   if (!shippingAddress || !shippingCity || !shippingProvince || !shippingPostalCode) {
-    return { error: "Alamat pengiriman wajib diisi lengkap." };
+    return { error: "Shipping address must be filled in completely." };
   }
   if (!rajaongkirDestinationId || !courierCode || !courierService) {
-    return { error: "Pilih tujuan pengiriman dan kurir terlebih dahulu." };
+    return { error: "Choose a shipping destination and courier first." };
   }
 
   const courierEnum = courierCodeToEnum(courierCode);
   if (!courierEnum) {
-    return { error: "Kurir tidak dikenali." };
+    return { error: "Unrecognized courier." };
   }
 
   let cart: CartItem[];
   try {
     cart = JSON.parse(cartJson);
   } catch {
-    return { error: "Keranjang tidak valid." };
+    return { error: "Invalid cart." };
   }
   if (!Array.isArray(cart) || cart.length === 0) {
-    return { error: "Keranjang kosong." };
+    return { error: "Cart is empty." };
   }
 
   // Never trust client-supplied prices/stock — re-fetch from DB and recompute.
@@ -97,10 +97,10 @@ export async function createOrder(
   for (const cartItem of cart) {
     const product = productMap.get(cartItem.productId);
     if (!product) {
-      return { error: `Produk "${cartItem.name}" sudah tidak tersedia.` };
+      return { error: `Product "${cartItem.name}" is no longer available.` };
     }
     if (product.type === "READY" && (product.stockQty ?? 0) < cartItem.qty) {
-      return { error: `Stok "${product.name}" tidak cukup (sisa ${product.stockQty}).` };
+      return { error: `Not enough stock for "${product.name}" (${product.stockQty} left).` };
     }
 
     const unitChargeable = chargeableWeightGrams(
@@ -134,15 +134,15 @@ export async function createOrder(
     return {
       error:
         rateResult.reason === "quota_exceeded"
-          ? "Ongkos kirim otomatis sedang tidak tersedia. Silakan hubungi admin via WhatsApp untuk konfirmasi ongkir."
-          : "Gagal memverifikasi ongkos kirim, coba lagi.",
+          ? "Automatic shipping rates are currently unavailable. Please contact admin via WhatsApp to confirm shipping cost."
+          : "Failed to verify shipping cost, please try again.",
     };
   }
   const matchedRate = rateResult.rates.find(
     (r) => r.courierCode === courierCode && r.service === courierService
   );
   if (!matchedRate) {
-    return { error: "Ongkos kirim sudah berubah, silakan pilih ulang kurir." };
+    return { error: "Shipping cost has changed, please choose the courier again." };
   }
   const shippingCost = matchedRate.cost;
 

@@ -41,7 +41,7 @@ export async function getCartShippingRates(
     const settings = await getSettings();
     const waUrl = whatsappLink(
       settings.whatsapp_number,
-      "Halo, saya mau tanya ongkos kirim untuk pesanan karena kalkulator otomatis sedang tidak tersedia."
+      "Hi, I'd like to ask about the shipping cost for my order since the automatic calculator is currently unavailable."
     );
     return { ...result, chargeableGrams: Math.ceil(totalGrams), whatsappUrl: waUrl };
   }

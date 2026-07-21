@@ -28,21 +28,21 @@ export function DeleteAddressButton({
       <DialogTrigger
         render={
           <Button variant="outline" size="sm" className="text-destructive">
-            Hapus
+            Delete
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Hapus alamat &quot;{addressLabel}&quot;?</DialogTitle>
+          <DialogTitle>Delete address &quot;{addressLabel}&quot;?</DialogTitle>
           <DialogDescription>
-            Alamat ini akan dihapus permanen dari daftar tersimpan kamu. Pesanan yang
-            sudah pernah pakai alamat ini tidak akan terpengaruh.
+            This address will be permanently deleted from your saved list. Orders that
+            already used this address won&apos;t be affected.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-            Batal
+            Cancel
           </Button>
           <Button
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -54,7 +54,7 @@ export function DeleteAddressButton({
               });
             }}
           >
-            {pending ? "Menghapus..." : "Ya, Hapus"}
+            {pending ? "Deleting..." : "Yes, Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -39,7 +39,7 @@ export function DestinationPicker({
   return (
     <div className="relative">
       <Input
-        placeholder="Ketik kecamatan/kota/kode pos tujuan..."
+        placeholder="Type destination district/city/postal code..."
         value={selected ? selected.label : query}
         onChange={(e) => {
           setSelected(null);
@@ -48,7 +48,7 @@ export function DestinationPicker({
         onFocus={() => results.length > 0 && setOpen(true)}
       />
       {loading && (
-        <p className="mt-1 text-xs text-muted-foreground">Mencari...</p>
+        <p className="mt-1 text-xs text-muted-foreground">Searching...</p>
       )}
       {open && results.length > 0 && (
         <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">

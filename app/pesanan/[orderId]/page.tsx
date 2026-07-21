@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING_PAYMENT: "Menunggu Pembayaran",
-  PAID: "Sudah Dibayar",
-  PROCESSING: "Sedang Diproses",
-  SHIPPED: "Dikirim",
-  COMPLETED: "Selesai",
-  CANCELLED: "Dibatalkan",
+  PENDING_PAYMENT: "Pending Payment",
+  PAID: "Paid",
+  PROCESSING: "Processing",
+  SHIPPED: "Shipped",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 export default async function OrderStatusPage({
@@ -36,7 +36,7 @@ export default async function OrderStatusPage({
   const hasBankInfo = settings.bank_name && settings.bank_account_number;
   const waLink = whatsappLink(
     settings.whatsapp_number,
-    `Halo, saya mau konfirmasi pembayaran untuk pesanan ${order.orderNumber}`
+    `Hi, I'd like to confirm payment for order ${order.orderNumber}`
   );
 
   return (
@@ -45,13 +45,13 @@ export default async function OrderStatusPage({
       <ClearCartOnMount />
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-8">
         <div>
-          <p className="text-sm text-muted-foreground">Nomor Pesanan</p>
+          <p className="text-sm text-muted-foreground">Order Number</p>
           <h1 className="text-xl font-semibold">{order.orderNumber}</h1>
           <Badge className="mt-2">{STATUS_LABELS[order.status] ?? order.status}</Badge>
         </div>
 
         <div className="rounded-lg border p-4">
-          <h2 className="mb-2 text-sm font-medium">Rincian Pesanan</h2>
+          <h2 className="mb-2 text-sm font-medium">Order Details</h2>
           <div className="space-y-2">
             {order.items.map((item) => (
               <div key={item.id} className="flex justify-between text-sm">
@@ -69,7 +69,7 @@ export default async function OrderStatusPage({
             <span>Rp{order.itemsSubtotal.toLocaleString("id-ID")}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Ongkos Kirim</span>
+            <span className="text-muted-foreground">Shipping Cost</span>
             <span>Rp{order.shippingCost.toLocaleString("id-ID")}</span>
           </div>
           <div className="mt-1 flex justify-between font-semibold">
@@ -80,24 +80,24 @@ export default async function OrderStatusPage({
 
         {order.status === "PENDING_PAYMENT" && (
           <div className="space-y-3 rounded-lg border p-4">
-            <h2 className="text-sm font-medium">Instruksi Pembayaran</h2>
+            <h2 className="text-sm font-medium">Payment Instructions</h2>
             <p className="text-sm text-muted-foreground">
-              Silakan transfer sejumlah{" "}
+              Please transfer{" "}
               <span className="font-semibold text-foreground">
                 Rp{order.totalAmount.toLocaleString("id-ID")}
               </span>{" "}
               {hasBankInfo ? (
                 <>
-                  ke <span className="font-semibold text-foreground">{settings.bank_name}</span>{" "}
+                  to <span className="font-semibold text-foreground">{settings.bank_name}</span>{" "}
                   <span className="font-semibold text-foreground">
                     {settings.bank_account_number}
                   </span>{" "}
-                  a.n. {settings.bank_account_holder}
+                  under the name {settings.bank_account_holder}
                 </>
               ) : (
-                "ke rekening yang diinformasikan admin"
+                "to the account provided by admin"
               )}
-              , lalu upload bukti transfer di bawah ini (opsional, mempercepat verifikasi).
+              , then upload your payment proof below (optional, speeds up verification).
             </p>
             {waLink && (
               <a
@@ -106,12 +106,12 @@ export default async function OrderStatusPage({
                 rel="noreferrer"
                 className="text-sm text-primary underline"
               >
-                Konfirmasi via WhatsApp
+                Confirm via WhatsApp
               </a>
             )}
             {order.paymentProofUrl ? (
               <p className="text-sm text-green-600">
-                Bukti transfer sudah diupload, menunggu verifikasi admin.
+                Payment proof uploaded, awaiting admin verification.
               </p>
             ) : (
               <PaymentProofForm orderId={order.id} />
@@ -121,13 +121,13 @@ export default async function OrderStatusPage({
 
         {order.resiNumber && (
           <div className="rounded-lg border p-4">
-            <h2 className="text-sm font-medium">Nomor Resi</h2>
+            <h2 className="text-sm font-medium">Tracking Number</h2>
             <p className="text-sm">{order.resiNumber}</p>
           </div>
         )}
 
         <div className="text-sm text-muted-foreground">
-          <p>Dikirim ke: {order.customerName}</p>
+          <p>Shipped to: {order.customerName}</p>
           <p>{order.shippingAddress}</p>
           <p>
             {order.shippingDistrict}, {order.shippingCity}, {order.shippingProvince}{" "}

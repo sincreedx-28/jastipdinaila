@@ -6,8 +6,8 @@ import { useCartStore } from "@/lib/store/cart";
 
 const LINKS = [
   { href: "/", label: "Home" },
-  { href: "/produk", label: "Produk" },
-  { href: "/keranjang", label: "Keranjang" },
+  { href: "/produk", label: "Products" },
+  { href: "/keranjang", label: "Cart" },
 ];
 
 export function HeaderNav() {

@@ -18,14 +18,14 @@ export default async function AkunPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Alamat Saya</h1>
-        <Button render={<Link href="/akun/alamat/baru">+ Tambah Alamat</Link>} />
+        <h1 className="text-xl font-semibold">My Addresses</h1>
+        <Button render={<Link href="/akun/alamat/baru">+ Add Address</Link>} />
       </div>
 
       {addresses.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          Belum ada alamat tersimpan. Alamat yang disimpan akan muncul di checkout
-          supaya tidak perlu diisi ulang tiap order.
+          No saved addresses yet. Saved addresses will appear at checkout so you
+          don&apos;t have to re-enter them every order.
         </p>
       )}
 
@@ -36,7 +36,7 @@ export default async function AkunPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{a.label}</span>
-                  {a.isDefault && <Badge>Utama</Badge>}
+                  {a.isDefault && <Badge>Default</Badge>}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -61,7 +61,7 @@ export default async function AkunPage() {
                   }}
                 >
                   <Button type="submit" variant="ghost" size="sm">
-                    Jadikan alamat utama
+                    Set as default address
                   </Button>
                 </form>
               )}

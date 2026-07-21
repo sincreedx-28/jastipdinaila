@@ -30,7 +30,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-              Tidak ada foto
+              No photo
             </div>
           )}
           <Badge
@@ -41,7 +41,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           </Badge>
           {soldOut && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-              <Badge variant="outline">Stok Habis</Badge>
+              <Badge variant="outline">Out of Stock</Badge>
             </div>
           )}
         </div>

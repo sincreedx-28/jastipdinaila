@@ -58,7 +58,7 @@ export function RecommendationCarousel({ items }: { items: RecommendationItem[] 
                 <Image src={p.imageUrl} alt={p.name} fill className="object-contain" />
               </>
             ) : (
-              <div className="stripes absolute inset-0 text-sm">Tidak ada foto</div>
+              <div className="stripes absolute inset-0 text-sm">No photo</div>
             )}
             <div
               className="relative w-full px-7 py-6"

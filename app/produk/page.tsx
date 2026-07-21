@@ -60,7 +60,7 @@ export default async function ProductsPage({
     <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <h1 className="mb-5 font-heading text-2xl font-bold">Semua Produk</h1>
+        <h1 className="mb-5 font-heading text-2xl font-bold">All Products</h1>
 
         {groups.length > 0 && (
           <div className="mb-6 flex flex-col gap-3.5">
@@ -73,7 +73,7 @@ export default async function ProductsPage({
                     : "border-border bg-card text-foreground"
                 }`}
               >
-                Semua
+                All
               </Link>
               {groups.map((g) => (
                 <Link
@@ -120,7 +120,7 @@ function ProductGrid({ products }: { products: ProductCardData[] }) {
   if (products.length === 0) {
     return (
       <p className="py-12 text-center text-muted-foreground">
-        Belum ada produk di kategori ini.
+        No products in this category yet.
       </p>
     );
   }
