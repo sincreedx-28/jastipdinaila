@@ -59,8 +59,11 @@ model Product {
 
   // Storefront taxonomy (Claude Design patch) — nullable/defaulted so the
   // admin product form keeps compiling until it's updated to set these too.
-  category    ProductCategory?
-  subcategory String           @default("")
+  // Mapped to non-default column names: redesign/pink-shop-ui already added
+  // a plain-text "category" column to this same shared Supabase database,
+  // so this branch's enum-typed field needs its own column to avoid clashing.
+  category    ProductCategory? @map("category_enum")
+  subcategory String           @default("") @map("subcategory_v2")
 
   isActive Boolean @default(true)
 
