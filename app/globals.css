@@ -145,6 +145,12 @@
      doesn't retroactively change that. Re-applying font-family here forces
      descendants to actually pick up Nunito Sans instead. */
   font-family: var(--font-nunito-sans), sans-serif;
+  /* background-color does NOT inherit, and body{@apply bg-background} lives
+     on an ANCESTOR of this div (body wraps .theme-shop, not the reverse) —
+     so body keeps painting :root's white regardless of the --background
+     redefined here. Applying it directly on .theme-shop is what actually
+     makes the page background pink. */
+  background-color: var(--background);
 }
 .theme-shop h1,
 .theme-shop h2,
