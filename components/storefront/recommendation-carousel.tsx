@@ -46,7 +46,17 @@ export function RecommendationCarousel({ items }: { items: RecommendationItem[] 
             style={{ scrollSnapAlign: "start" }}
           >
             {p.imageUrl ? (
-              <Image src={p.imageUrl} alt={p.name} fill className="object-cover" />
+              <>
+                <Image
+                  src={p.imageUrl}
+                  alt=""
+                  aria-hidden
+                  fill
+                  className="scale-110 object-cover blur-2xl"
+                />
+                <div className="absolute inset-0 bg-black/10" />
+                <Image src={p.imageUrl} alt={p.name} fill className="object-contain" />
+              </>
             ) : (
               <div className="stripes absolute inset-0 text-sm">Tidak ada foto</div>
             )}
