@@ -91,7 +91,7 @@ export function CheckoutForm({
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-      <h1 className="mb-4 text-xl font-semibold">Checkout</h1>
+      <h1 className="mb-4 text-xl font-semibold text-white">Checkout</h1>
 
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="cart" value={JSON.stringify(items)} />
@@ -108,14 +108,14 @@ export function CheckoutForm({
 
         {isLoggedIn && savedAddresses.length > 0 && (
           <section className="space-y-2">
-            <h2 className="text-sm font-medium">Alamat Tersimpan</h2>
+            <h2 className="text-sm font-medium text-white">Alamat Tersimpan</h2>
             <div className="grid gap-2">
               {savedAddresses.map((a) => (
                 <button
                   key={a.id}
                   type="button"
                   onClick={() => setSelectedAddressId(a.id)}
-                  className={`rounded-lg border p-3 text-left text-sm ${
+                  className={`rounded-lg border bg-card p-3 text-left text-sm ${
                     selectedAddressId === a.id ? "border-primary ring-1 ring-primary" : ""
                   }`}
                 >
@@ -131,7 +131,7 @@ export function CheckoutForm({
               <button
                 type="button"
                 onClick={() => setSelectedAddressId(NEW_ADDRESS)}
-                className={`rounded-lg border border-dashed p-3 text-left text-sm text-muted-foreground ${
+                className={`rounded-lg border border-dashed p-3 text-left text-sm text-white ${
                   usingNewAddress ? "border-primary ring-1 ring-primary" : ""
                 }`}
               >
@@ -142,22 +142,28 @@ export function CheckoutForm({
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-medium">Data Pelanggan</h2>
+          <h2 className="text-sm font-medium text-white">Data Pelanggan</h2>
           <div className="space-y-2">
-            <Label htmlFor="customerName">Nama Lengkap</Label>
+            <Label htmlFor="customerName" className="text-white">
+              Nama Lengkap
+            </Label>
             <Input
               id="customerName"
               name="customerName"
+              className="bg-card"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="customerPhone">Nomor HP / WhatsApp</Label>
+            <Label htmlFor="customerPhone" className="text-white">
+              Nomor HP / WhatsApp
+            </Label>
             <Input
               id="customerPhone"
               name="customerPhone"
+              className="bg-card"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               required
@@ -166,19 +172,22 @@ export function CheckoutForm({
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-sm font-medium">Alamat Pengiriman</h2>
+          <h2 className="text-sm font-medium text-white">Alamat Pengiriman</h2>
           <div className="space-y-2">
-            <Label htmlFor="shippingAddress">Alamat Lengkap (jalan, no rumah, RT/RW)</Label>
+            <Label htmlFor="shippingAddress" className="text-white">
+              Alamat Lengkap (jalan, no rumah, RT/RW)
+            </Label>
             <Textarea
               id="shippingAddress"
               name="shippingAddress"
+              className="bg-card"
               value={shippingAddress}
               onChange={(e) => setShippingAddress(e.target.value)}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label>Kecamatan / Kota Tujuan</Label>
+            <Label className="text-white">Kecamatan / Kota Tujuan</Label>
             <DestinationPicker
               key={selectedAddressId}
               defaultValue={destination ?? undefined}
@@ -190,7 +199,7 @@ export function CheckoutForm({
           </div>
 
           {isLoggedIn && usingNewAddress && (
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-white">
               <input
                 type="checkbox"
                 name="saveAddress"
@@ -202,10 +211,13 @@ export function CheckoutForm({
           )}
           {isLoggedIn && usingNewAddress && saveAddress && (
             <div className="space-y-2">
-              <Label htmlFor="saveAddressLabel">Label alamat (mis. Rumah, Kantor)</Label>
+              <Label htmlFor="saveAddressLabel" className="text-white">
+                Label alamat (mis. Rumah, Kantor)
+              </Label>
               <Input
                 id="saveAddressLabel"
                 name="saveAddressLabel"
+                className="bg-card"
                 value={saveAddressLabel}
                 onChange={(e) => setSaveAddressLabel(e.target.value)}
                 placeholder="Rumah"
@@ -215,7 +227,7 @@ export function CheckoutForm({
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-medium">Pilih Kurir</h2>
+          <h2 className="text-sm font-medium text-white">Pilih Kurir</h2>
           <ShippingMethodPicker
             destinationId={destination?.id ?? null}
             cart={items}
@@ -223,13 +235,13 @@ export function CheckoutForm({
           />
         </section>
 
-        <section className="space-y-2 rounded-lg border p-4">
+        <section className="space-y-2 rounded-lg border p-4 text-white">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal barang</span>
+            <span>Subtotal barang</span>
             <span>Rp{subtotal.toLocaleString("id-ID")}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Ongkos kirim</span>
+            <span>Ongkos kirim</span>
             <span>{rate ? `Rp${shippingCost.toLocaleString("id-ID")}` : "-"}</span>
           </div>
           <div className="flex justify-between border-t pt-2 font-semibold">

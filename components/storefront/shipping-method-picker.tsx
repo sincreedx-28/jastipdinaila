@@ -44,7 +44,7 @@ function ShippingMethodPickerInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <p className="text-sm text-muted-foreground">Menghitung ongkir...</p>;
+  if (loading) return <p className="text-sm text-white">Menghitung ongkir...</p>;
   if (error) {
     return (
       <div className="space-y-1">
@@ -70,7 +70,7 @@ function ShippingMethodPickerInner({
         return (
           <label
             key={key}
-            className="flex cursor-pointer items-center justify-between rounded-md border p-3 text-sm has-[:checked]:border-primary"
+            className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3 text-sm has-[:checked]:border-primary"
           >
             <div className="flex items-center gap-2">
               <input
@@ -110,7 +110,7 @@ export function ShippingMethodPicker({
 }) {
   if (!destinationId) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-white">
         Pilih tujuan pengiriman dulu untuk melihat opsi kurir.
       </p>
     );
