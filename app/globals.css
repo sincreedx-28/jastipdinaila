@@ -128,3 +128,24 @@
     @apply font-sans;
   }
 }
+
+/* Storefront-only brand tokens (Claude Design patch) — additive, admin keeps
+   using the neutral shadcn tokens above untouched. */
+:root {
+  --brand-pink: #f1a2b5;
+  --brand-cream: oklch(97% 0.015 70);
+  --brand-ink: oklch(24% 0.02 40);
+  --brand-muted: oklch(45% 0.02 40);
+  --brand-accent: oklch(55% 0.15 10);
+  --brand-chip-bg: oklch(99% 0.005 70);
+  --brand-chip-border: oklch(88% 0.02 60);
+}
+
+@keyframes brand-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCustomer } from "@/lib/customer-auth";
+import { PromoBanner } from "@/components/storefront/promo-banner";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { ProductCard } from "@/components/storefront/product-card";
 import { Button } from "@/components/ui/button";
+import { PRODUCT_CATEGORIES } from "@/lib/product-taxonomy";
 
 async function getHomeProducts() {
   const [ready, po] = await Promise.all([
@@ -28,11 +30,41 @@ export default async function Home() {
   const customer = await getCurrentCustomer();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col" style={{ background: "var(--brand-cream)" }}>
+      <PromoBanner />
       <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-8">
+        <section
+          className="rounded-2xl p-8 text-center sm:text-left"
+          style={{ background: "var(--brand-pink)" }}
+        >
+          <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: "var(--brand-ink)" }}>
+            Rawat kulitmu (dan gayamu), titip ke jastipdinaila
+          </h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--brand-ink)" }}>
+            Skincare, fashion, dan hijab pilihan — original, aman, harga bersahabat.
+          </p>
+        </section>
+
+        <section className="flex flex-wrap justify-center gap-3 sm:justify-start">
+          {PRODUCT_CATEGORIES.map((c) => (
+            <Link
+              key={c.value}
+              href={`/produk?category=${c.value}`}
+              className="rounded-full border px-4 py-2 text-sm font-bold"
+              style={{
+                background: "var(--brand-chip-bg)",
+                borderColor: "var(--brand-chip-border)",
+                color: "var(--brand-ink)",
+              }}
+            >
+              {c.label}
+            </Link>
+          ))}
+        </section>
+
         {ready.length === 0 && po.length === 0 ? (
-          <p className="py-16 text-center text-muted-foreground">
+          <p className="py-16 text-center text-[var(--brand-muted)]">
             Belum ada produk tersedia saat ini.
           </p>
         ) : (
@@ -71,8 +103,10 @@ function ProductSection({
     <section className="space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
+          <h2 className="text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
+            {title}
+          </h2>
+          <p className="text-sm text-[var(--brand-muted)]">{subtitle}</p>
         </div>
         <Button variant="outline" size="sm" render={<Link href="/produk">Lihat Semua</Link>} />
       </div>

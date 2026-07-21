@@ -13,42 +13,53 @@ export function CartView() {
   const items = useCartStore((s) => s.items);
   const setQty = useCartStore((s) => s.setQty);
   const removeItem = useCartStore((s) => s.removeItem);
-  // Zustand's persisted store hydrates client-side only — avoid an SSR/CSR
-  // mismatch by rendering the empty state until hydration completes.
   const hydrated = useCartStore((s) => s.hasHydrated);
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-      <h1 className="mb-4 text-xl font-semibold">Keranjang</h1>
+    <main
+      className="mx-auto w-full max-w-3xl flex-1 px-4 py-8"
+      style={{ background: "var(--brand-cream)" }}
+    >
+      <h1 className="mb-4 text-xl font-bold" style={{ color: "var(--brand-ink)" }}>
+        Keranjang
+      </h1>
 
       {!hydrated ? null : items.length === 0 ? (
-        <div className="py-16 text-center text-muted-foreground">
+        <div className="py-16 text-center text-[var(--brand-muted)]">
           <p>Keranjang kamu masih kosong.</p>
-          <Button className="mt-4" render={<Link href="/produk">Lihat Produk</Link>} />
+          <Button
+            className="mt-4"
+            style={{ background: "var(--brand-accent)" }}
+            render={<Link href="/produk">Lihat Produk</Link>}
+          />
         </div>
       ) : (
         <div className="space-y-4">
           {items.map((item) => (
             <div
               key={item.productId}
-              className="flex items-center gap-4 rounded-lg border p-3"
+              className="flex items-center gap-4 rounded-xl border p-3"
+              style={{ borderColor: "var(--brand-chip-border)", background: "white" }}
             >
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-muted">
-                {item.imageUrl && (
-                  <Image src={item.imageUrl} alt="" fill className="object-cover" />
-                )}
+              <div
+                className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg"
+                style={{ background: "var(--brand-chip-bg)" }}
+              >
+                {item.imageUrl && <Image src={item.imageUrl} alt="" fill className="object-cover" />}
               </div>
               <div className="flex-1">
                 <Badge
-                  variant={item.type === "READY" ? "default" : "secondary"}
-                  className="mb-1"
+                  className="mb-1 border-none text-white"
+                  style={{ background: item.type === "READY" ? "var(--brand-accent)" : "var(--brand-ink)" }}
                 >
                   {item.type === "READY" ? "Ready" : "PO"}
                 </Badge>
-                <p className="text-sm font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-semibold" style={{ color: "var(--brand-ink)" }}>
+                  {item.name}
+                </p>
+                <p className="text-sm text-[var(--brand-muted)]">
                   Rp{item.price.toLocaleString("id-ID")}
                 </p>
               </div>
@@ -65,16 +76,23 @@ export function CartView() {
             </div>
           ))}
 
-          <div className="flex items-center justify-between border-t pt-4">
-            <span className="text-sm text-muted-foreground">Subtotal barang</span>
-            <span className="text-lg font-semibold">
+          <div
+            className="flex items-center justify-between border-t pt-4"
+            style={{ borderColor: "var(--brand-chip-border)" }}
+          >
+            <span className="text-sm text-[var(--brand-muted)]">Subtotal barang</span>
+            <span className="text-lg font-bold" style={{ color: "var(--brand-accent)" }}>
               Rp{subtotal.toLocaleString("id-ID")}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-[var(--brand-muted)]">
             Ongkos kirim dihitung di halaman checkout.
           </p>
-          <Button className="w-full" onClick={() => router.push("/checkout")}>
+          <Button
+            className="w-full"
+            style={{ background: "var(--brand-accent)" }}
+            onClick={() => router.push("/checkout")}
+          >
             Lanjut ke Checkout
           </Button>
         </div>

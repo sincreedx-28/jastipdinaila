@@ -90,8 +90,13 @@ export function CheckoutForm({
   const usingNewAddress = selectedAddressId === NEW_ADDRESS;
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-      <h1 className="mb-4 text-xl font-semibold">Checkout</h1>
+    <main
+      className="mx-auto w-full max-w-2xl flex-1 px-4 py-8"
+      style={{ background: "var(--brand-cream)" }}
+    >
+      <h1 className="mb-4 text-xl font-bold" style={{ color: "var(--brand-ink)" }}>
+        Checkout
+      </h1>
 
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="cart" value={JSON.stringify(items)} />
@@ -115,9 +120,10 @@ export function CheckoutForm({
                   key={a.id}
                   type="button"
                   onClick={() => setSelectedAddressId(a.id)}
-                  className={`rounded-lg border p-3 text-left text-sm ${
-                    selectedAddressId === a.id ? "border-primary ring-1 ring-primary" : ""
-                  }`}
+                  className="rounded-lg border p-3 text-left text-sm"
+                  style={{
+                    border: selectedAddressId === a.id ? "2px solid var(--brand-accent)" : undefined,
+                  }}
                 >
                   <span className="font-medium">{a.label}</span>
                   <p className="text-muted-foreground">
@@ -234,13 +240,20 @@ export function CheckoutForm({
           </div>
           <div className="flex justify-between border-t pt-2 font-semibold">
             <span>Total</span>
-            <span>Rp{(subtotal + shippingCost).toLocaleString("id-ID")}</span>
+            <span style={{ color: "var(--brand-accent)" }}>
+              Rp{(subtotal + shippingCost).toLocaleString("id-ID")}
+            </span>
           </div>
         </section>
 
         {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-        <Button type="submit" className="w-full" disabled={pending || !canSubmit}>
+        <Button
+          type="submit"
+          className="w-full"
+          style={canSubmit ? { background: "var(--brand-accent)" } : undefined}
+          disabled={pending || !canSubmit}
+        >
           {pending
             ? "Memproses..."
             : !canSubmit

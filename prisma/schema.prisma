@@ -29,6 +29,14 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ProductCategory {
+  FASHION
+  HIJAB_KHIMAR_SCARVES
+  SKINCARE
+  MAKE_UP
+  HAIR_BODY_CARE
+}
+
 model Product {
   id          String      @id @default(cuid())
   slug        String      @unique
@@ -48,6 +56,11 @@ model Product {
   // Meaningful only for READY products; null means unlimited (PO items are
   // made to order and are never stock-constrained).
   stockQty Int?
+
+  // Storefront taxonomy (Claude Design patch) — nullable/defaulted so the
+  // admin product form keeps compiling until it's updated to set these too.
+  category    ProductCategory?
+  subcategory String           @default("")
 
   isActive Boolean @default(true)
 

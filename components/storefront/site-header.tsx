@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Customer } from "@/lib/generated/prisma/client";
 import { LoginButton } from "@/components/storefront/login-button";
 import { Button } from "@/components/ui/button";
@@ -12,16 +13,29 @@ import { signOutCustomer } from "@/lib/actions/customer-auth";
 
 export function SiteHeader({ customer }: { customer?: Customer | null }) {
   return (
-    <header className="border-b bg-background">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <Link href="/" className="text-lg font-semibold">
-          Jastipdinaila
+    <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logo-jastipdinaila.jpg"
+            alt="Jastipdinaila"
+            width={140}
+            height={44}
+            className="h-11 w-auto object-contain"
+            priority
+          />
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/produk" className="text-muted-foreground hover:text-foreground">
-            Semua Produk
+        <nav className="flex items-center gap-6 text-sm">
+          <Link
+            href="/produk"
+            className="font-semibold text-[var(--brand-ink)] hover:text-[var(--brand-accent)]"
+          >
+            Produk
           </Link>
-          <Link href="/keranjang" className="text-muted-foreground hover:text-foreground">
+          <Link
+            href="/keranjang"
+            className="font-semibold text-[var(--brand-ink)] hover:text-[var(--brand-accent)]"
+          >
             Keranjang
           </Link>
           {customer ? (

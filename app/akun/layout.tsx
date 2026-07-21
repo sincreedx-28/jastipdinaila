@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentCustomer } from "@/lib/customer-auth";
+import { PromoBanner } from "@/components/storefront/promo-banner";
 import { SiteHeader } from "@/components/storefront/site-header";
 
 export default async function AkunLayout({
@@ -14,6 +15,7 @@ export default async function AkunLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
+      <PromoBanner />
       <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">{children}</main>
     </div>
