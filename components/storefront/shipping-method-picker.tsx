@@ -44,7 +44,7 @@ function ShippingMethodPickerInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <p className="text-sm text-white">Menghitung ongkir...</p>;
+  if (loading) return <p className="text-sm">Menghitung ongkir...</p>;
   if (error) {
     return (
       <div className="space-y-1">
@@ -110,9 +110,7 @@ export function ShippingMethodPicker({
 }) {
   if (!destinationId) {
     return (
-      <p className="text-sm text-white">
-        Pilih tujuan pengiriman dulu untuk melihat opsi kurir.
-      </p>
+      <p className="text-sm">Pilih tujuan pengiriman dulu untuk melihat opsi kurir.</p>
     );
   }
 

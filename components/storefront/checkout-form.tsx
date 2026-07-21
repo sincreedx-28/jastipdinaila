@@ -91,7 +91,7 @@ export function CheckoutForm({
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-      <h1 className="mb-4 text-xl font-semibold text-white">Checkout</h1>
+      <h1 className="mb-4 text-xl font-semibold">Checkout</h1>
 
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="cart" value={JSON.stringify(items)} />
@@ -108,7 +108,7 @@ export function CheckoutForm({
 
         {isLoggedIn && savedAddresses.length > 0 && (
           <section className="space-y-2">
-            <h2 className="text-sm font-medium text-white">Alamat Tersimpan</h2>
+            <h2 className="text-sm font-medium">Alamat Tersimpan</h2>
             <div className="grid gap-2">
               {savedAddresses.map((a) => (
                 <button
@@ -131,7 +131,7 @@ export function CheckoutForm({
               <button
                 type="button"
                 onClick={() => setSelectedAddressId(NEW_ADDRESS)}
-                className={`rounded-lg border border-dashed p-3 text-left text-sm text-white ${
+                className={`rounded-lg border border-dashed p-3 text-left text-sm ${
                   usingNewAddress ? "border-primary ring-1 ring-primary" : ""
                 }`}
               >
@@ -142,11 +142,9 @@ export function CheckoutForm({
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-medium text-white">Data Pelanggan</h2>
+          <h2 className="text-sm font-medium">Data Pelanggan</h2>
           <div className="space-y-2">
-            <Label htmlFor="customerName" className="text-white">
-              Nama Lengkap
-            </Label>
+            <Label htmlFor="customerName">Nama Lengkap</Label>
             <Input
               id="customerName"
               name="customerName"
@@ -157,9 +155,7 @@ export function CheckoutForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="customerPhone" className="text-white">
-              Nomor HP / WhatsApp
-            </Label>
+            <Label htmlFor="customerPhone">Nomor HP / WhatsApp</Label>
             <Input
               id="customerPhone"
               name="customerPhone"
@@ -172,11 +168,9 @@ export function CheckoutForm({
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-sm font-medium text-white">Alamat Pengiriman</h2>
+          <h2 className="text-sm font-medium">Alamat Pengiriman</h2>
           <div className="space-y-2">
-            <Label htmlFor="shippingAddress" className="text-white">
-              Alamat Lengkap (jalan, no rumah, RT/RW)
-            </Label>
+            <Label htmlFor="shippingAddress">Alamat Lengkap (jalan, no rumah, RT/RW)</Label>
             <Textarea
               id="shippingAddress"
               name="shippingAddress"
@@ -187,7 +181,7 @@ export function CheckoutForm({
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-white">Kecamatan / Kota Tujuan</Label>
+            <Label>Kecamatan / Kota Tujuan</Label>
             <DestinationPicker
               key={selectedAddressId}
               defaultValue={destination ?? undefined}
@@ -199,7 +193,7 @@ export function CheckoutForm({
           </div>
 
           {isLoggedIn && usingNewAddress && (
-            <label className="flex items-center gap-2 text-sm text-white">
+            <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 name="saveAddress"
@@ -211,9 +205,7 @@ export function CheckoutForm({
           )}
           {isLoggedIn && usingNewAddress && saveAddress && (
             <div className="space-y-2">
-              <Label htmlFor="saveAddressLabel" className="text-white">
-                Label alamat (mis. Rumah, Kantor)
-              </Label>
+              <Label htmlFor="saveAddressLabel">Label alamat (mis. Rumah, Kantor)</Label>
               <Input
                 id="saveAddressLabel"
                 name="saveAddressLabel"
@@ -227,7 +219,7 @@ export function CheckoutForm({
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-medium text-white">Pilih Kurir</h2>
+          <h2 className="text-sm font-medium">Pilih Kurir</h2>
           <ShippingMethodPicker
             destinationId={destination?.id ?? null}
             cart={items}
@@ -235,13 +227,13 @@ export function CheckoutForm({
           />
         </section>
 
-        <section className="space-y-2 rounded-lg border p-4 text-white">
+        <section className="space-y-2 rounded-lg border bg-card p-4">
           <div className="flex justify-between text-sm">
-            <span>Subtotal barang</span>
+            <span className="text-muted-foreground">Subtotal barang</span>
             <span>Rp{subtotal.toLocaleString("id-ID")}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span>Ongkos kirim</span>
+            <span className="text-muted-foreground">Ongkos kirim</span>
             <span>{rate ? `Rp${shippingCost.toLocaleString("id-ID")}` : "-"}</span>
           </div>
           <div className="flex justify-between border-t pt-2 font-semibold">
