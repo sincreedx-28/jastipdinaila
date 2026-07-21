@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SiteFooter } from "@/components/storefront/site-footer";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
 
@@ -26,7 +28,11 @@ export default async function ProductDetailPage({
   return (
     <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
-      <main className="mx-auto grid w-full max-w-5xl flex-1 gap-8 px-4 py-8 md:grid-cols-2">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+        <Link href="/produk" className="mb-5 inline-block text-sm font-bold text-foreground">
+          ← Kembali ke Katalog
+        </Link>
+        <div className="grid gap-8 md:grid-cols-2">
         <div className="space-y-3">
           <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
             {mainImage ? (
@@ -97,7 +103,9 @@ export default async function ProductDetailPage({
             }}
           />
         </div>
+        </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

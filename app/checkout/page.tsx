@@ -1,6 +1,7 @@
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SiteFooter } from "@/components/storefront/site-footer";
 import { CheckoutForm } from "@/components/storefront/checkout-form";
 
 export default async function CheckoutPage() {
@@ -15,7 +16,10 @@ export default async function CheckoutPage() {
   return (
     <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
-      <CheckoutForm isLoggedIn={Boolean(customer)} savedAddresses={savedAddresses} />
+      <div className="flex-1">
+        <CheckoutForm isLoggedIn={Boolean(customer)} savedAddresses={savedAddresses} />
+      </div>
+      <SiteFooter />
     </div>
   );
 }

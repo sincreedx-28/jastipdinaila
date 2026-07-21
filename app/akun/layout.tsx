@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SiteFooter } from "@/components/storefront/site-footer";
 
 export default async function AkunLayout({
   children,
@@ -16,6 +17,7 @@ export default async function AkunLayout({
     <div className="theme-shop flex min-h-screen flex-col">
       <SiteHeader customer={customer} />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">{children}</main>
+      <SiteFooter />
     </div>
   );
 }

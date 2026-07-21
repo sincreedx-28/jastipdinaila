@@ -2,13 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SiteFooter } from "@/components/storefront/site-footer";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 
 async function getAllProducts() {
   return prisma.product.findMany({
@@ -50,9 +45,6 @@ export default async function ProductsPage({
   let filtered = products;
   if (activeCategory) filtered = filtered.filter((p) => p.category === activeCategory);
   else if (activeGroup) filtered = filtered.filter((p) => p.group === activeGroup);
-
-  const ready = filtered.filter((p) => p.type === "READY");
-  const po = filtered.filter((p) => p.type === "PO");
 
   const toCard = (p: (typeof products)[number]) => ({
     slug: p.slug,
@@ -117,23 +109,9 @@ export default async function ProductsPage({
           </div>
         )}
 
-        <Tabs defaultValue="all">
-          <TabsList>
-            <TabsTrigger value="all">Semua</TabsTrigger>
-            <TabsTrigger value="ready">Ready Stock</TabsTrigger>
-            <TabsTrigger value="po">Pre-Order</TabsTrigger>
-          </TabsList>
-          <TabsContent value="all">
-            <ProductGrid products={filtered.map(toCard)} />
-          </TabsContent>
-          <TabsContent value="ready">
-            <ProductGrid products={ready.map(toCard)} />
-          </TabsContent>
-          <TabsContent value="po">
-            <ProductGrid products={po.map(toCard)} />
-          </TabsContent>
-        </Tabs>
+        <ProductGrid products={filtered.map(toCard)} />
       </main>
+      <SiteFooter />
     </div>
   );
 }

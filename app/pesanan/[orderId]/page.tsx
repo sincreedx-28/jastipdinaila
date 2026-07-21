@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSettings, whatsappLink } from "@/lib/settings";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SiteFooter } from "@/components/storefront/site-footer";
 import { ClearCartOnMount } from "@/components/storefront/clear-cart-on-mount";
 import { PaymentProofForm } from "@/components/storefront/payment-proof-form";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +135,7 @@ export default async function OrderStatusPage({
           </p>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
