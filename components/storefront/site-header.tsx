@@ -14,25 +14,25 @@ import { signOutCustomer } from "@/lib/actions/customer-auth";
 
 export function SiteHeader({ customer }: { customer?: Customer | null }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
+    <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2.5 sm:gap-4 sm:py-3.5">
         <Link href="/" className="shrink-0">
           <Image
             src="/logo-jastipdinaila-transparent.png"
             alt="jastipdinaila"
             height={44}
             width={112}
-            className="h-11 w-auto object-contain"
+            className="h-10 w-auto object-contain sm:h-11"
             priority
           />
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
           <HeaderNav />
           {customer ? (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="outline" size="sm" className="rounded-full">
+                  <Button variant="outline" size="sm" className="max-w-[9rem] truncate rounded-full">
                     {customer.name}
                   </Button>
                 }

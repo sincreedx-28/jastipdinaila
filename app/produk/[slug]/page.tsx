@@ -26,9 +26,11 @@ export default async function ProductDetailPage({
   const mainImage = product.images[0]?.url ?? null;
 
   return (
-    <div className="theme-shop flex min-h-screen flex-col">
+    // max-sm padding = height of the buy bar pinned to the bottom on phones
+    // (see AddToCartButton), so it never covers the footer.
+    <div className="theme-shop flex min-h-screen flex-col max-sm:pb-[84px]">
       <SiteHeader customer={customer} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-8 sm:py-8">
         <Link href="/produk" className="mb-5 inline-block text-sm font-bold text-foreground">
           ← Back to Catalog
         </Link>

@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
 
   return (
     <Link href={`/produk/${product.slug}`}>
-      <Card className="overflow-hidden py-0 transition-shadow hover:shadow-md">
+      <Card className="h-full overflow-hidden py-0 ring-1 ring-border transition-shadow hover:shadow-md">
         <div className="relative aspect-square bg-muted">
           {product.imageUrl ? (
             <Image
@@ -33,15 +33,18 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               No photo
             </div>
           )}
-          <Badge
-            className="absolute left-2 top-2"
-            variant={product.type === "READY" ? "default" : "secondary"}
-          >
-            {product.type === "READY" ? "Ready" : "PO"}
-          </Badge>
+          {product.type === "READY" ? (
+            <Badge className="absolute left-2 top-2">Ready</Badge>
+          ) : (
+            <span className="absolute left-2 top-2 rounded-md bg-card px-2 py-0.5 text-xs font-extrabold text-primary ring-1 ring-primary">
+              Pre-Order
+            </span>
+          )}
           {soldOut && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-              <Badge variant="outline">Out of Stock</Badge>
+              <span className="rounded-full bg-card px-3 py-1 text-xs font-extrabold text-foreground">
+                Out of Stock
+              </span>
             </div>
           )}
         </div>
@@ -52,7 +55,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             </p>
           )}
           <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
-          <p className="text-sm font-semibold text-primary">
+          <p className="text-base font-extrabold text-primary">
             Rp{product.price.toLocaleString("id-ID")}
           </p>
         </CardContent>
