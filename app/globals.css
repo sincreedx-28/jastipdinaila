@@ -121,23 +121,29 @@
    customer-facing pages (Home/Produk/Keranjang/Checkout/Akun/Pesanan). The
    admin panel intentionally keeps the neutral theme above untouched. */
 .theme-shop {
-  --background: #f1a2b5;
-  --foreground: oklch(24% 0.02 40);
-  --card: oklch(99% 0.005 70);
-  --card-foreground: oklch(24% 0.02 40);
-  --popover: oklch(99% 0.005 70);
-  --popover-foreground: oklch(24% 0.02 40);
-  --primary: oklch(55% 0.15 10);
-  --primary-foreground: oklch(99% 0.005 70);
-  --secondary: oklch(99% 0.005 70);
-  --secondary-foreground: oklch(35% 0.02 40);
-  --muted: oklch(93% 0.02 60);
-  --muted-foreground: oklch(50% 0.02 40);
-  --accent: oklch(96% 0.03 20);
-  --accent-foreground: oklch(24% 0.02 40);
-  --border: oklch(88% 0.02 60);
-  --input: oklch(88% 0.02 60);
-  --ring: oklch(55% 0.15 10);
+  /* Pink-white palette sampled from the jastipdinaila logo: dusty-rose
+     lettering (#be6266 → slightly deepened to #b9575e so white button text
+     keeps ≥4.5:1 contrast) on white, with the logo's blush blob (#fde1e0)
+     as the soft fill. */
+  --background: #ffffff;
+  --foreground: #3b2224;
+  --card: #ffffff;
+  --card-foreground: #3b2224;
+  --popover: #ffffff;
+  --popover-foreground: #3b2224;
+  --primary: #b9575e;
+  --primary-foreground: #ffffff;
+  --secondary: #fdeceb;
+  --secondary-foreground: #8f3c43;
+  --muted: #fdeceb;
+  --muted-foreground: #86696b;
+  --accent: #fdeceb;
+  --accent-foreground: #3b2224;
+  --border: #f5d3d2;
+  --input: #f5d3d2;
+  --ring: #b9575e;
+  --rose-deep: #8f3c43;
+  --rose-glow: #f3a5a7;
   --font-heading: var(--font-libre-baskerville);
   --font-sans: var(--font-nunito-sans);
   /* font-family is inherited, and html{@apply font-sans} already resolved
@@ -168,18 +174,55 @@
 .theme-shop .marquee-track {
   animation: shop-marquee 18s linear infinite;
 }
+.theme-shop .no-scrollbar {
+  scrollbar-width: none;
+}
+.theme-shop .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Banner fills for banners without a photo — all derived from the palette
+   above so a future palette change carries through. */
+.theme-shop .banner-rose {
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 18%, rgb(255 255 255 / 0.2) 0 18%, transparent 18.5%),
+    radial-gradient(circle at 98% 100%, var(--rose-glow) 0 30%, transparent 30.5%),
+    linear-gradient(135deg, var(--primary), var(--rose-deep));
+}
+.theme-shop .banner-blush {
+  color: var(--rose-deep);
+  background:
+    radial-gradient(circle at 88% 18%, rgb(255 255 255 / 0.7) 0 18%, transparent 18.5%),
+    radial-gradient(circle at 98% 100%, var(--rose-glow) 0 30%, transparent 30.5%),
+    linear-gradient(135deg, var(--secondary), var(--border));
+}
+.theme-shop .banner-white {
+  color: var(--rose-deep);
+  background:
+    radial-gradient(circle at 88% 18%, var(--secondary) 0 18%, transparent 18.5%),
+    radial-gradient(circle at 98% 100%, var(--border) 0 30%, transparent 30.5%),
+    #fff;
+  box-shadow: inset 0 0 0 2px var(--border);
+}
+.theme-shop .banner-dark {
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 18%, rgb(255 255 255 / 0.12) 0 18%, transparent 18.5%),
+    radial-gradient(circle at 98% 100%, var(--primary) 0 30%, transparent 30.5%),
+    linear-gradient(135deg, var(--rose-deep), #4a1f24);
+}
 .theme-shop .stripes {
   background: repeating-linear-gradient(
     135deg,
-    oklch(93% 0.02 60) 0px,
-    oklch(93% 0.02 60) 10px,
-    oklch(90% 0.025 60) 10px,
-    oklch(90% 0.025 60) 20px
+    var(--secondary) 0px,
+    var(--secondary) 10px,
+    var(--border) 10px,
+    var(--border) 20px
   );
   display: flex;
   align-items: center;
   justify-content: center;
-  color: oklch(55% 0.02 40);
+  color: var(--muted-foreground);
   font-family: ui-monospace, monospace;
   text-align: center;
   padding: 8px;
