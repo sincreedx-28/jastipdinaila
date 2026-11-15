@@ -23,7 +23,7 @@ export function LoginButton() {
       className="rounded-full"
       onClick={handleLogin}
     >
-      Sign in with Google
+      Sign in<span className="hidden sm:inline">&nbsp;with Google</span>
     </Button>
   );
 }

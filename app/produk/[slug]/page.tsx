@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
+import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 
 export default async function ProductDetailPage({
   params,
@@ -14,21 +15,24 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug, isActive: true },
-    include: { images: { orderBy: { sortOrder: "asc" } } },
-  });
+  const [product, customer] = await Promise.all([
+    prisma.product.findUnique({
+      where: { slug, isActive: true },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
+    }),
+    getCurrentCustomer(),
+  ]);
 
   if (!product) notFound();
-
-  const customer = await getCurrentCustomer();
   const soldOut = product.type === "READY" && (product.stockQty ?? 0) <= 0;
   const mainImage = product.images[0]?.url ?? null;
 
   return (
-    <div className="theme-shop flex min-h-screen flex-col">
+    // max-sm padding = height of the buy bar pinned to the bottom on phones
+    // (see AddToCartButton), so it never covers the footer.
+    <div className="theme-shop flex min-h-screen flex-col max-sm:pb-[84px]">
       <SiteHeader customer={customer} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-8 sm:py-8">
         <Link href="/produk" className="mb-5 inline-block text-sm font-bold text-foreground">
           ← Back to Catalog
         </Link>
@@ -38,9 +42,7 @@ export default async function ProductDetailPage({
             {mainImage ? (
               <Image src={mainImage} alt={product.name} fill className="object-cover" />
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                No photo
-              </div>
+              <ProductPlaceholder name={product.name} size="lg" />
             )}
           </div>
           {product.images.length > 1 && (

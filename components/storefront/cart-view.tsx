@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/cart";
 import { Button } from "@/components/ui/button";
@@ -36,8 +37,10 @@ export function CartView() {
                 className="flex gap-3.5 rounded-xl border bg-card p-3.5"
               >
                 <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {item.imageUrl && (
+                  {item.imageUrl ? (
                     <Image src={item.imageUrl} alt="" fill className="object-cover" />
+                  ) : (
+                    <ProductPlaceholder name={item.name} size="sm" />
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-1">

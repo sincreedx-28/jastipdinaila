@@ -39,7 +39,8 @@ export function AddToCartButton({
                 key={v}
                 type="button"
                 onClick={() => setVariant(v)}
-                className={`rounded-lg border px-4.5 py-2.5 text-sm font-bold ${
+                aria-pressed={variant === v}
+                className={`min-h-11 rounded-lg border px-4.5 py-2.5 text-sm font-bold ${
                   variant === v
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background text-foreground"
@@ -52,46 +53,53 @@ export function AddToCartButton({
         </div>
       )}
 
-      <div className="flex items-center gap-4.5">
-        <div className="text-sm font-bold">Quantity</div>
-        <div className="flex items-center rounded-lg border">
+      {/* On phones the quantity stepper and buy buttons are pinned to the
+          bottom of the screen in one row, so they never need scrolling to
+          reach (the page adds bottom padding to make room); from sm up they
+          sit inline as before. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center gap-x-4.5 gap-y-4 border-t border-border bg-card px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-6px_20px_-12px_rgb(0_0_0/0.25)] max-sm:flex-nowrap max-sm:gap-2 sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+        <div className="text-sm font-bold max-sm:hidden">Quantity</div>
+        <div className="flex flex-none items-center rounded-lg border sm:mr-auto">
           <button
             type="button"
             onClick={() => setQty((q) => Math.max(1, q - 1))}
-            className="flex h-9 w-9 items-center justify-center text-lg font-bold"
+            aria-label="Decrease quantity"
+            className="flex h-11 w-9 items-center justify-center text-lg font-bold sm:w-10"
           >
             −
           </button>
-          <div className="w-9 text-center font-bold">{qty}</div>
+          <div className="w-7 text-center font-bold sm:w-9">{qty}</div>
           <button
             type="button"
             onClick={() => setQty((q) => q + 1)}
-            className="flex h-9 w-9 items-center justify-center text-lg font-bold"
+            aria-label="Increase quantity"
+            className="flex h-11 w-9 items-center justify-center text-lg font-bold sm:w-10"
           >
             +
           </button>
         </div>
-      </div>
 
-      <div className="flex items-center gap-3">
-        <Button
-          className="flex-1"
-          onClick={() => {
-            addItem({ ...product, variant }, qty);
-            toast.success(`${product.name} added to cart`);
-          }}
-        >
-          Add to Cart
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            addItem({ ...product, variant }, qty);
-            router.push("/keranjang");
-          }}
-        >
-          Buy Now
-        </Button>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:basis-full sm:gap-3">
+          <Button
+            className="h-11 min-w-0 flex-1 text-base font-bold"
+            onClick={() => {
+              addItem({ ...product, variant }, qty);
+              toast.success(`${product.name} added to cart`);
+            }}
+          >
+            Add to Cart
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11 px-3 text-base font-bold sm:px-4"
+            onClick={() => {
+              addItem({ ...product, variant }, qty);
+              router.push("/keranjang");
+            }}
+          >
+            Buy Now
+          </Button>
+        </div>
       </div>
     </div>
   );

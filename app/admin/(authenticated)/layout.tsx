@@ -47,6 +47,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/produk", label: "Produk" },
   { href: "/admin/pesanan", label: "Pesanan" },
+  { href: "/admin/banner", label: "Banner" },
   { href: "/admin/pengaturan", label: "Pengaturan", superAdminOnly: true },
 ];
 

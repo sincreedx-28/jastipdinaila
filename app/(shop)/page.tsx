@@ -4,34 +4,44 @@ import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { ProductCard } from "@/components/storefront/product-card";
-import { RecommendationCarousel } from "@/components/storefront/recommendation-carousel";
+import { HeroBanners } from "@/components/storefront/hero-banners";
+import { TypeTabs } from "@/components/storefront/type-tabs";
+import { autoBanners, getBanners } from "@/lib/banners";
 
 async function getHomeProducts() {
-  const [featured, groupSource] = await Promise.all([
+  const [featured, groupSource, readyCount, poCount, banners] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
       include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
       orderBy: { createdAt: "desc" },
-      take: 4,
+      take: 8,
     }),
     prisma.product.findMany({
       where: { isActive: true },
       select: { group: true },
     }),
+    prisma.product.count({ where: { isActive: true, type: "READY" } }),
+    prisma.product.count({ where: { isActive: true, type: "PO" } }),
+    getBanners(),
   ]);
-  return { featured, groupSource };
+  return { featured, groupSource, readyCount, poCount, banners };
 }
 
 export default async function Home() {
-  const { featured, groupSource } = await getHomeProducts();
-  const customer = await getCurrentCustomer();
+  const [{ featured, groupSource, readyCount, poCount, banners }, customer] = await Promise.all([
+    getHomeProducts(),
+    getCurrentCustomer(),
+  ]);
+  const counts = { ready: readyCount, po: poCount };
+  const activeBanners = banners.filter((b) => b.active);
+  const shownBanners = activeBanners.length > 0 ? activeBanners : autoBanners(counts);
   const groups = [
     ...new Set(groupSource.map((p) => p.group).filter((g): g is string => Boolean(g))),
   ];
 
   return (
     <div className="theme-shop flex min-h-screen flex-col">
-      <div className="overflow-hidden whitespace-nowrap bg-foreground py-2.5 text-white">
+      <div className="overflow-hidden whitespace-nowrap bg-primary py-2 text-primary-foreground">
         <div className="marquee-track inline-block pl-[100%] text-[13px] font-bold tracking-wide">
           {Array.from({ length: 3 }).map((_, i) => (
             <span key={i}>
@@ -44,30 +54,27 @@ export default async function Home() {
 
       <SiteHeader customer={customer} />
       <main className="flex-1">
-        <section className="mx-auto w-full max-w-5xl px-4 pb-2 pt-10 sm:pt-14">
-          <h1 className="mb-4.5 font-heading text-4xl font-bold text-white sm:text-5xl">
-            Your Personal Shopper
-          </h1>
-          {featured.length > 0 && (
-            <RecommendationCarousel
-              items={featured.map((p) => ({
-                slug: p.slug,
-                name: p.name,
-                category: p.category,
-                imageUrl: p.images[0]?.url ?? null,
-              }))}
-            />
-          )}
+        <section className="mx-auto w-full max-w-5xl px-4 pt-4 sm:pt-6">
+          <h1 className="sr-only">Jastipdinaila — Your Personal Shopper</h1>
+          <HeroBanners banners={shownBanners} />
+        </section>
+
+        <section className="mx-auto w-full max-w-5xl px-4 pt-5">
+          <TypeTabs
+            active={null}
+            counts={counts}
+            hrefFor={(type) => (type ? `/produk?type=${type}` : "/produk")}
+          />
         </section>
 
         {groups.length > 0 && (
-          <section className="mx-auto w-full max-w-5xl px-4 py-8">
-            <div className="flex flex-wrap justify-center gap-3">
+          <section className="mx-auto w-full max-w-5xl px-4 py-5">
+            <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
               {groups.map((g) => (
                 <Link
                   key={g}
                   href={`/produk?group=${encodeURIComponent(g)}`}
-                  className="rounded-full border border-border bg-card px-4.5 py-2.5 text-sm font-bold text-foreground"
+                  className="flex-none whitespace-nowrap rounded-full border border-border bg-card px-4.5 py-2.5 text-sm font-bold text-foreground"
                 >
                   {g}
                 </Link>
@@ -77,9 +84,14 @@ export default async function Home() {
         )}
 
         <section className="mx-auto w-full max-w-5xl px-4 pb-10">
-          <h2 className="mb-6 font-heading text-2xl font-bold">Featured Products</h2>
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="font-heading text-2xl font-bold">New Arrivals</h2>
+            <Link href="/produk" className="text-sm font-bold text-primary">
+              See all →
+            </Link>
+          </div>
           {featured.length > 0 ? (
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4">
               {featured.map((p) => (
                 <ProductCard
                   key={p.slug}
@@ -96,11 +108,11 @@ export default async function Home() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-white">No products available right now.</p>
+            <p className="text-center text-muted-foreground">No products available right now.</p>
           )}
         </section>
 
-        <section className="mt-2 bg-background px-4 py-12">
+        <section className="mt-2 bg-secondary px-4 py-12">
           <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-10">
             <div className="stripes aspect-[4/3] min-w-[220px] flex-1 basis-[260px] rounded-2xl">
               owner photo
