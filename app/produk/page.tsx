@@ -34,8 +34,7 @@ export default async function ProductsPage({
 }) {
   const { type: rawType, group: activeGroup, category: activeCategory } = await searchParams;
   const activeType = parseType(rawType);
-  const allProducts = await getAllProducts();
-  const customer = await getCurrentCustomer();
+  const [allProducts, customer] = await Promise.all([getAllProducts(), getCurrentCustomer()]);
 
   const counts = {
     ready: allProducts.filter((p) => p.type === "READY").length,

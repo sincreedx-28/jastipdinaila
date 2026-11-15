@@ -28,11 +28,13 @@ async function getHomeProducts() {
 }
 
 export default async function Home() {
-  const { featured, groupSource, readyCount, poCount, banners } = await getHomeProducts();
+  const [{ featured, groupSource, readyCount, poCount, banners }, customer] = await Promise.all([
+    getHomeProducts(),
+    getCurrentCustomer(),
+  ]);
   const counts = { ready: readyCount, po: poCount };
   const activeBanners = banners.filter((b) => b.active);
   const shownBanners = activeBanners.length > 0 ? activeBanners : autoBanners(counts);
-  const customer = await getCurrentCustomer();
   const groups = [
     ...new Set(groupSource.map((p) => p.group).filter((g): g is string => Boolean(g))),
   ];

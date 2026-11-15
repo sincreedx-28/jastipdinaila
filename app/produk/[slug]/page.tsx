@@ -15,14 +15,15 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug, isActive: true },
-    include: { images: { orderBy: { sortOrder: "asc" } } },
-  });
+  const [product, customer] = await Promise.all([
+    prisma.product.findUnique({
+      where: { slug, isActive: true },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
+    }),
+    getCurrentCustomer(),
+  ]);
 
   if (!product) notFound();
-
-  const customer = await getCurrentCustomer();
   const soldOut = product.type === "READY" && (product.stockQty ?? 0) <= 0;
   const mainImage = product.images[0]?.url ?? null;
 
