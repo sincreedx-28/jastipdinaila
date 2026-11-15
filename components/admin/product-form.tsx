@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import type { ProductFormState } from "@/lib/actions/products";
 import { deleteProductImage } from "@/lib/actions/products";
-import { CurrencyInput } from "@/components/admin/currency-input";
+import { VariantEditor } from "@/components/admin/variant-editor";
+import type { VariantRowValue } from "@/lib/variant-types";
 
 type ExistingImage = { id: string; url: string };
 
@@ -23,15 +24,13 @@ type ProductFormValues = {
   name: string;
   description: string;
   type: "READY" | "PO";
-  price: number;
   weightGrams: number;
   lengthCm: number;
   widthCm: number;
   heightCm: number;
-  stockQty: number | null;
   group?: string | null;
   category?: string | null;
-  variants?: string[];
+  variants?: VariantRowValue[];
 };
 
 export function ProductForm({
@@ -39,11 +38,14 @@ export function ProductForm({
   defaultValues,
   existingImages,
   submitLabel,
+  isOwner,
 }: {
   action: (state: ProductFormState, formData: FormData) => Promise<ProductFormState>;
   defaultValues?: ProductFormValues;
   existingImages?: ExistingImage[];
   submitLabel: string;
+  /** Owner (super admin) also sees and enters purchase prices. */
+  isOwner: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [type, setType] = useState<"READY" | "PO">(defaultValues?.type ?? "READY");
@@ -91,20 +93,6 @@ export function ProductForm({
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="variants">Varian</Label>
-        <Input
-          id="variants"
-          name="variants"
-          placeholder="S, M, L (pisahkan dengan koma)"
-          defaultValue={defaultValues?.variants?.join(", ") ?? ""}
-        />
-        <p className="text-xs text-muted-foreground">
-          Cuma label pilihan (ukuran/warna/dll), harga dan stok tetap sama untuk semua
-          varian. Kosongkan kalau produk ini tidak punya varian.
-        </p>
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="type">Tipe Produk</Label>
         <Select name="type" value={type} onValueChange={(v) => setType(v as "READY" | "PO")}>
           <SelectTrigger id="type">
@@ -117,27 +105,11 @@ export function ProductForm({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="price">Harga Jual</Label>
-        <CurrencyInput id="price" name="price" defaultValue={defaultValues?.price} required />
-        <p className="text-xs text-muted-foreground">
-          Ini harga final yang dilihat pelanggan — fee jastip sudah termasuk di sini.
-        </p>
-      </div>
-
-      {type === "READY" && (
-        <div className="space-y-2">
-          <Label htmlFor="stockQty">Stok Tersedia</Label>
-          <Input
-            id="stockQty"
-            name="stockQty"
-            type="number"
-            min={0}
-            defaultValue={defaultValues?.stockQty ?? undefined}
-            required
-          />
-        </div>
-      )}
+      <VariantEditor
+        type={type}
+        isOwner={isOwner}
+        initial={defaultValues?.variants}
+      />
 
       <div className="space-y-2">
         <Label>Berat &amp; Dimensi (untuk hitung ongkir)</Label>
