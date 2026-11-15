@@ -52,6 +52,7 @@ const navItems = [
   { href: "/admin/pesanan", label: "Pesanan" },
   { href: "/admin/banner", label: "Banner" },
   { href: "/admin/pengaturan", label: "Pengaturan", superAdminOnly: true },
+  { href: "/admin/rekap", label: "Rekap Order", highlight: true },
 ];
 
 export default async function AdminLayout({

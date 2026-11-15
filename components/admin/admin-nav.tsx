@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export type AdminNavItem = { href: string; label: string };
+export type AdminNavItem = { href: string; label: string; highlight?: boolean };
 
 /** Pill tabs under the "Kelola toko" title; scrolls sideways on phones. */
 export function AdminNav({ items }: { items: AdminNavItem[] }) {
@@ -17,11 +17,12 @@ export function AdminNav({ items }: { items: AdminNavItem[] }) {
         <Link
           key={item.href}
           href={item.href}
-          className="pill"
+          className={`pill ${item.highlight ? "pill-outline-brand" : ""}`}
           data-active={isActive(item.href)}
           aria-current={isActive(item.href) ? "page" : undefined}
         >
           {item.label}
+          {item.highlight && !isActive(item.href) && " →"}
         </Link>
       ))}
     </nav>
