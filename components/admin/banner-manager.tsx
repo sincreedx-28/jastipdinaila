@@ -95,14 +95,14 @@ export function BannerManager({
   return (
     <div className="space-y-4">
       {banners.length === 0 && (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
           Belum ada banner buatan sendiri. Selama kosong, beranda menampilkan banner
           otomatis dari jumlah barang Ready dan Pre-Order.
         </p>
       )}
 
       {banners.map((b, i) => (
-        <div key={b.id} className="grid gap-4 rounded-xl border bg-background p-4 md:grid-cols-[280px_1fr]">
+        <div key={b.id} className="box grid gap-4 p-4 md:grid-cols-[280px_1fr]">
           <div className="theme-shop !bg-transparent">
             <div
               className={`banner-${b.color} relative aspect-[12/5] overflow-hidden rounded-xl ${
@@ -180,7 +180,7 @@ export function BannerManager({
               <Label htmlFor={`c-${b.id}`}>Warna (kalau tanpa gambar)</Label>
               <select
                 id={`c-${b.id}`}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                className="h-11 w-full rounded-xl border border-input bg-background px-3 text-base"
                 value={b.color}
                 onChange={(e) => update(b.id, { color: e.target.value as BannerColor })}
               >
@@ -195,7 +195,7 @@ export function BannerManager({
               <Label htmlFor={`l-${b.id}`}>Saat diklik</Label>
               <select
                 id={`l-${b.id}`}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                className="h-11 w-full rounded-xl border border-input bg-background px-3 text-base"
                 value={b.link}
                 onChange={(e) => update(b.id, { link: e.target.value })}
               >

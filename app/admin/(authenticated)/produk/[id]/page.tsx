@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/admin-auth";
@@ -37,17 +38,22 @@ export default async function EditProductPage({
   const updateProductWithId = updateProduct.bind(null, product.id);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Edit Produk</h1>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <Link href="/admin/produk" className="text-sm font-bold text-primary hover:underline">
+          ← Daftar produk
+        </Link>
+        <h2 className="text-2xl">Edit produk</h2>
+      </div>
       {baru === "salinan" && (
-        <p className="max-w-2xl rounded-md bg-muted p-3 text-sm">
+        <p className="soft-note max-w-2xl">
           Ini salinan produk dan masih <b>nonaktif</b> (belum tampil di toko). Ganti nama,
-          harga, atau foto yang perlu, simpan, lalu aktifkan dari daftar produk.
+          harga, atau foto yang perlu, simpan, lalu centang “Tampil” di daftar produk.
         </p>
       )}
       <ProductForm
         action={updateProductWithId}
-        submitLabel="Simpan Perubahan"
+        submitLabel="Simpan perubahan"
         existingImages={product.images}
         isOwner={isOwner}
         defaultValues={{

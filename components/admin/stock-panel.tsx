@@ -46,7 +46,7 @@ function PurchaseForm({ variant, onDone }: { variant: PanelVariant; onDone: () =
   }, [state]);
 
   return (
-    <form action={action} className="space-y-2 rounded-md border bg-background p-3">
+    <form action={action} className="space-y-2 rounded-xl bg-secondary/60 p-3">
       <p className="text-sm font-semibold">Tambah stok dari belanja</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-[6rem_9rem_1fr]">
         <Input name="qty" inputMode="numeric" placeholder="Jumlah" aria-label="Jumlah" required />
@@ -90,7 +90,7 @@ function CorrectionForm({ variant, onDone }: { variant: PanelVariant; onDone: ()
   }, [state]);
 
   return (
-    <form action={action} className="space-y-2 rounded-md border bg-background p-3">
+    <form action={action} className="space-y-2 rounded-xl bg-secondary/60 p-3">
       <p className="text-sm font-semibold">Koreksi stok</p>
       <p className="text-xs text-muted-foreground">
         Isi jumlah yang benar-benar ada sekarang (mis. setelah hitung ulang, ada yang rusak,
@@ -163,7 +163,7 @@ function VariantStockRow({ variant, isOwner }: { variant: PanelVariant; isOwner:
           <Button
             type="button"
             size="sm"
-            variant={open === "fix" ? "default" : "ghost"}
+            variant={open === "fix" ? "default" : "outline"}
             onClick={() => setOpen(open === "fix" ? null : "fix")}
           >
             Koreksi
@@ -193,9 +193,9 @@ export function StockPanel({
   const total = variants.reduce((s, v) => s + v.stockQty, 0);
 
   return (
-    <section className="max-w-2xl space-y-4 rounded-lg border p-4">
+    <section className="box max-w-2xl space-y-4 p-4">
       <div>
-        <h2 className="text-lg font-semibold">Stok &amp; Modal</h2>
+        <h2 className="text-xl">Stok &amp; modal</h2>
         <p className="text-sm text-muted-foreground">
           Total stok: <b>{total} pcs</b>.{" "}
           {isOwner

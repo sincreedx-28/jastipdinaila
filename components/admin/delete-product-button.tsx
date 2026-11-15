@@ -27,7 +27,7 @@ export function DeleteProductButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="outline" size="sm" className="text-destructive">
+          <Button variant="outline" size="sm">
             Hapus
           </Button>
         }
@@ -39,7 +39,7 @@ export function DeleteProductButton({
             &quot;{productName}&quot; dan semua fotonya akan dihapus permanen. Pesanan
             yang sudah pernah masuk untuk produk ini tidak akan terpengaruh. Kalau cuma
             mau sembunyikan sementara (misal stok habis tapi mau di-restock lagi),
-            pakai tombol &quot;Aktif/Nonaktif&quot; saja, bukan ini.
+            cukup hilangkan centang &quot;Tampil&quot;, bukan hapus.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -47,7 +47,7 @@ export function DeleteProductButton({
             Batal
           </Button>
           <Button
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-destructive text-white hover:bg-destructive/90"
             disabled={pending}
             onClick={() => {
               startTransition(async () => {

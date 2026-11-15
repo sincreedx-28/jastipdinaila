@@ -152,11 +152,11 @@ export function VariantEditor({
   const showNewStockCols = isReady && rows.some((r) => !r.id);
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="box space-y-3 p-4">
       <input type="hidden" name="variantsJson" value={JSON.stringify(payload)} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-base">Harga{isReady ? " & Stok" : ""}</Label>
+        <Label className="text-base">Harga{isReady ? " & stok" : ""}</Label>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -176,10 +176,10 @@ export function VariantEditor({
         {(hasOptions ? rows : rows.slice(0, 1)).map((row) => (
           <div
             key={row.key}
-            className="grid grid-cols-2 items-end gap-2 rounded-md bg-muted/40 p-2.5 sm:flex sm:flex-wrap"
+            className="relative grid grid-cols-2 items-end gap-2 rounded-xl bg-secondary/60 p-3 sm:flex sm:flex-wrap sm:pr-12"
           >
             {hasOptions && (
-              <div className="col-span-2 space-y-1 sm:w-40">
+              <div className="col-span-2 space-y-1 pr-10 sm:w-40 sm:pr-0">
                 <span className="text-xs text-muted-foreground">Nama varian</span>
                 <Input
                   aria-label="Nama varian"
@@ -232,15 +232,15 @@ export function VariantEditor({
             )}
 
             {hasOptions && rows.length > 1 && (
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="text-destructive sm:ml-auto"
+                aria-label={`Hapus varian ${row.name}`}
+                title="Hapus varian"
                 onClick={() => removeRow(row)}
+                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-xl border bg-background text-lg font-bold hover:bg-secondary sm:top-auto sm:bottom-3"
               >
-                Hapus
-              </Button>
+                ×
+              </button>
             )}
           </div>
         ))}
@@ -260,7 +260,7 @@ export function VariantEditor({
             {rows.length > 1 && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => setRows((rs) => rs.map((r) => ({ ...r, price: rs[0].price })))}
               >

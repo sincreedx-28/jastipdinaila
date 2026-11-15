@@ -3,13 +3,15 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { duplicateProduct, toggleProductActive } from "@/lib/actions/products";
+import { duplicateProduct } from "@/lib/actions/products";
 import { DeleteProductButton } from "@/components/admin/delete-product-button";
+import { VisibilityToggle } from "@/components/admin/visibility-toggle";
+import { CategorySelect } from "@/components/admin/category-select";
+import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { formatPriceRange } from "@/lib/variant-types";
 
-type Search = { q?: string; tipe?: string; status?: string; stok?: string };
+type Search = { q?: string; tipe?: string; status?: string; stok?: string; grup?: string };
 
 const NO_GROUP = "Belum dikategorikan";
 
@@ -29,46 +31,44 @@ export default async function AdminProductsPage({
       { category: { contains: q, mode: "insensitive" } },
     ];
   }
+  if (sp.grup) where.group = sp.grup === NO_GROUP ? null : sp.grup;
   if (sp.tipe === "READY" || sp.tipe === "PO") where.type = sp.tipe;
-  if (sp.status === "aktif") where.isActive = true;
-  if (sp.status === "nonaktif") where.isActive = false;
-  if (sp.stok === "habis") {
-    where.type = "READY";
-    where.stockQty = { lte: 0 };
-  }
+  if (sp.status === "sembunyi") where.isActive = false;
   if (sp.stok === "menipis") {
     where.type = "READY";
     where.variants = { some: { stockQty: { lte: 3 } } };
   }
 
-  const [products, totalCount] = await Promise.all([
+  const [products, totalCount, allGroups] = await Promise.all([
     prisma.product.findMany({
       where,
       include: {
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
-        variants: { select: { name: true, price: true, stockQty: true }, orderBy: { sortOrder: "asc" } },
+        variants: {
+          select: { name: true, price: true, stockQty: true },
+          orderBy: { sortOrder: "asc" },
+        },
       },
       orderBy: [{ group: "asc" }, { category: "asc" }, { name: "asc" }],
     }),
     prisma.product.count(),
+    prisma.product.findMany({ select: { group: true }, distinct: ["group"] }),
   ]);
 
-  // Group → category → products, groups in alphabetical order with the
-  // uncategorized bucket last.
-  const groups = new Map<string, Map<string, typeof products>>();
+  const groups = new Map<string, typeof products>();
   for (const p of products) {
     const g = p.group?.trim() || NO_GROUP;
-    const c = p.category?.trim() || "";
-    if (!groups.has(g)) groups.set(g, new Map());
-    const cats = groups.get(g)!;
-    if (!cats.has(c)) cats.set(c, []);
-    cats.get(c)!.push(p);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(p);
   }
-  const groupNames = [...groups.keys()].sort((a, b) =>
-    a === NO_GROUP ? 1 : b === NO_GROUP ? -1 : a.localeCompare(b, "id")
+  const byName = (a: string, b: string) =>
+    a === NO_GROUP ? 1 : b === NO_GROUP ? -1 : a.localeCompare(b, "id");
+  const groupNames = [...groups.keys()].sort(byName);
+  const groupOptions = [...new Set(allGroups.map((g) => g.group?.trim() || NO_GROUP))].sort(
+    byName
   );
 
-  const filtered = Boolean(q || sp.tipe || sp.status || sp.stok);
+  const filtered = Boolean(q || sp.tipe || sp.status || sp.stok || sp.grup);
   const hrefWith = (patch: Partial<Search>) => {
     const next = { ...sp, ...patch };
     const params = new URLSearchParams();
@@ -76,186 +76,180 @@ export default async function AdminProductsPage({
     const s = params.toString();
     return `/admin/produk${s ? `?${s}` : ""}`;
   };
+  const groupHrefs = Object.fromEntries(
+    ["", ...groupOptions].map((g) => [g, hrefWith({ grup: g || undefined })])
+  );
 
   const chip = (label: string, active: boolean, href: string) => (
-    <Link
-      key={label}
-      href={href}
-      className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium ${
-        active ? "border-primary bg-primary text-primary-foreground" : "bg-background"
-      }`}
-    >
+    <Link key={label} href={href} className="pill" data-active={active}>
       {label}
     </Link>
   );
+  const allShelves = !sp.tipe && !sp.status && !sp.stok;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Produk</h1>
-        <Button render={<Link href="/admin/produk/baru">+ Tambah Produk</Link>} />
+      <div className="flex flex-wrap gap-2">
+        <form className="flex min-w-60 flex-1" action="/admin/produk">
+          {Object.entries(sp)
+            .filter(([k, v]) => k !== "q" && v)
+            .map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+          <Input
+            name="q"
+            type="search"
+            defaultValue={q}
+            placeholder="Cari produk di semua kategori"
+            className="rounded-full!"
+          />
+        </form>
+        <Button render={<Link href="/admin/produk/baru">+ Produk baru</Link>} />
       </div>
 
-      <form className="flex gap-2" action="/admin/produk">
-        {sp.tipe && <input type="hidden" name="tipe" value={sp.tipe} />}
-        {sp.status && <input type="hidden" name="status" value={sp.status} />}
-        {sp.stok && <input type="hidden" name="stok" value={sp.stok} />}
-        <Input name="q" defaultValue={q} placeholder="Cari nama / grup / kategori" />
-        <Button type="submit" variant="outline">
-          Cari
-        </Button>
-      </form>
-
-      <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
-        {chip("Semua tipe", !sp.tipe, hrefWith({ tipe: undefined }))}
-        {chip("Ready", sp.tipe === "READY", hrefWith({ tipe: "READY" }))}
-        {chip("PO", sp.tipe === "PO", hrefWith({ tipe: "PO" }))}
-        <span className="mx-1 border-l" />
-        {chip("Aktif", sp.status === "aktif", hrefWith({ status: sp.status === "aktif" ? undefined : "aktif" }))}
-        {chip("Nonaktif", sp.status === "nonaktif", hrefWith({ status: sp.status === "nonaktif" ? undefined : "nonaktif" }))}
-        <span className="mx-1 border-l" />
-        {chip("Stok habis", sp.stok === "habis", hrefWith({ stok: sp.stok === "habis" ? undefined : "habis" }))}
-        {chip("Stok menipis", sp.stok === "menipis", hrefWith({ stok: sp.stok === "menipis" ? undefined : "menipis" }))}
+      <div className="flex flex-wrap items-center gap-2">
+        <CategorySelect options={groupOptions} value={sp.grup ?? ""} hrefFor={groupHrefs} />
+        {chip(
+          "Semua",
+          allShelves,
+          hrefWith({ tipe: undefined, status: undefined, stok: undefined })
+        )}
+        {chip("Ready", sp.tipe === "READY", hrefWith({ tipe: sp.tipe === "READY" ? undefined : "READY" }))}
+        {chip("PO", sp.tipe === "PO", hrefWith({ tipe: sp.tipe === "PO" ? undefined : "PO" }))}
+        {chip(
+          "Disembunyikan",
+          sp.status === "sembunyi",
+          hrefWith({ status: sp.status === "sembunyi" ? undefined : "sembunyi" })
+        )}
+        {chip(
+          "Stok menipis",
+          sp.stok === "menipis",
+          hrefWith({ stok: sp.stok === "menipis" ? undefined : "menipis" })
+        )}
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {filtered ? `${products.length} dari ${totalCount} produk` : `${totalCount} produk`}
+        {products.length} dari {totalCount} produk · {groupNames.length} kategori
         {filtered && (
           <>
             {" · "}
-            <Link href="/admin/produk" className="underline">
+            <Link href="/admin/produk" className="font-semibold text-primary hover:underline">
               hapus filter
             </Link>
           </>
         )}
       </p>
 
-      {groupNames.length > 1 && (
-        <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
-          {groupNames.map((g) => {
-            const count = [...groups.get(g)!.values()].reduce((s, l) => s + l.length, 0);
-            return (
-              <a
-                key={g}
-                href={`#grup-${encodeURIComponent(g)}`}
-                className="whitespace-nowrap rounded-md bg-muted px-2.5 py-1 text-xs"
-              >
-                {g} <span className="text-muted-foreground">({count})</span>
-              </a>
-            );
-          })}
-        </div>
-      )}
-
       {products.length === 0 && (
-        <p className="rounded-lg border p-6 text-center text-muted-foreground">
+        <p className="box p-8 text-center text-muted-foreground">
           {filtered ? "Tidak ada produk yang cocok." : "Belum ada produk."}
         </p>
       )}
 
       {groupNames.map((g) => {
-        const cats = groups.get(g)!;
-        const count = [...cats.values()].reduce((s, l) => s + l.length, 0);
+        const list = groups.get(g)!;
+        const poCount = list.filter((p) => p.type === "PO").length;
         return (
-          <details
-            key={g}
-            id={`grup-${encodeURIComponent(g)}`}
-            open
-            className="scroll-mt-4 rounded-lg border"
-          >
-            <summary className="cursor-pointer select-none bg-muted/50 px-4 py-2.5 font-semibold">
-              {g} <span className="font-normal text-muted-foreground">· {count} produk</span>
+          <details key={g} open className="box group/box px-4">
+            <summary className="flex cursor-pointer list-none items-center gap-3 py-4 [&::-webkit-details-marker]:hidden">
+              <span className="font-heading text-lg">{g}</span>
+              <span className="ml-auto text-sm text-muted-foreground">
+                {list.length} produk{poCount > 0 && ` · ${poCount} PO`}
+              </span>
+              <svg
+                aria-hidden
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="transition-transform group-open/box:rotate-180"
+              >
+                <path d="M6 15l6-6 6 6" />
+              </svg>
             </summary>
-            {[...cats.keys()].sort((a, b) => a.localeCompare(b, "id")).map((c) => (
-              <div key={c || "_"}>
-                {c && (
-                  <div className="border-t px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {c}
-                  </div>
-                )}
-                <ul className="divide-y">
-                  {cats.get(c)!.map((p) => {
-                    const prices = p.variants.map((v) => v.price);
-                    const min = prices.length ? Math.min(...prices) : p.price;
-                    const max = prices.length ? Math.max(...prices) : p.price;
-                    const named = p.variants.filter((v) => v.name);
-                    const stock = p.stockQty ?? 0;
-                    const lowVariants = named.filter((v) => (v.stockQty ?? 0) <= 0);
-                    return (
-                      <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                        {p.images[0] ? (
-                          <Image
-                            src={p.images[0].url}
-                            alt={p.name}
-                            width={44}
-                            height={44}
-                            className="h-11 w-11 rounded object-cover"
-                          />
-                        ) : (
-                          <div className="h-11 w-11 rounded bg-muted" />
+            <ul className="divide-y border-t">
+              {list.map((p) => {
+                const prices = p.variants.map((v) => v.price);
+                const min = prices.length ? Math.min(...prices) : p.price;
+                const max = prices.length ? Math.max(...prices) : p.price;
+                const named = p.variants.filter((v) => v.name);
+                const stock = p.stockQty ?? 0;
+                const outVariants = named.filter((v) => (v.stockQty ?? 0) <= 0).length;
+                return (
+                  <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                    <div className="relative h-13 w-13 shrink-0 overflow-hidden rounded-xl">
+                      {p.images[0] ? (
+                        <Image
+                          src={p.images[0].url}
+                          alt={p.name}
+                          fill
+                          sizes="52px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <ProductPlaceholder name={p.name} size="sm" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 basis-40">
+                      <Link
+                        href={`/admin/produk/${p.id}`}
+                        className="line-clamp-2 font-bold hover:underline"
+                      >
+                        {p.name}
+                      </Link>
+                      <p className="text-sm text-muted-foreground">
+                        {p.type === "READY" ? "Ready" : "PO"}
+                        {p.category && ` · ${p.category}`}
+                        {p.type === "READY" && (
+                          <span
+                            className={
+                              stock <= 0
+                                ? "font-bold text-destructive"
+                                : stock <= 3
+                                  ? "font-bold text-amber-700"
+                                  : ""
+                            }
+                          >
+                            {" · "}stok {stock}
+                          </span>
                         )}
-                        <div className="min-w-0 flex-1 basis-40">
-                          <Link
-                            href={`/admin/produk/${p.id}`}
-                            className="line-clamp-2 font-medium hover:underline"
-                          >
-                            {p.name}
-                          </Link>
-                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                            <Badge variant={p.type === "READY" ? "default" : "secondary"}>
-                              {p.type === "READY" ? "Ready" : "PO"}
-                            </Badge>
-                            <span>{formatPriceRange(min, max)}</span>
-                            {named.length > 0 && <span>· {named.length} varian</span>}
-                            {p.type === "READY" && (
-                              <span
-                                className={
-                                  stock <= 0
-                                    ? "font-semibold text-destructive"
-                                    : stock <= 3
-                                      ? "font-semibold text-amber-600"
-                                      : ""
-                                }
-                              >
-                                · stok {stock}
-                                {named.length > 0 && lowVariants.length > 0 && stock > 0 &&
-                                  ` (${lowVariants.length} varian habis)`}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Own row on phones so the name keeps its width. */}
-                        <div className="flex basis-full flex-wrap items-center gap-1.5 pl-14 sm:basis-auto sm:pl-0">
-                          <form
-                            action={async () => {
-                              "use server";
-                              await toggleProductActive(p.id, !p.isActive);
-                            }}
-                          >
-                            <Button type="submit" variant="ghost" size="sm">
-                              <Badge variant={p.isActive ? "default" : "outline"}>
-                                {p.isActive ? "Aktif" : "Nonaktif"}
-                              </Badge>
-                            </Button>
-                          </form>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            render={<Link href={`/admin/produk/${p.id}`}>Edit</Link>}
-                          />
-                          <form action={duplicateProduct.bind(null, p.id)}>
-                            <Button type="submit" variant="outline" size="sm">
-                              Duplikat
-                            </Button>
-                          </form>
-                          <DeleteProductButton productId={p.id} productName={p.name} />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+                        {" · "}
+                        {formatPriceRange(min, max)}
+                        {named.length > 0 && ` · ${named.length} varian`}
+                        {p.type === "READY" && stock > 0 && outVariants > 0 && (
+                          <span className="text-amber-700"> ({outVariants} habis)</span>
+                        )}
+                      </p>
+                    </div>
+                    {/* Own row on phones so the name keeps its width. */}
+                    <div className="flex basis-full flex-wrap items-center gap-1.5 sm:basis-auto">
+                      <VisibilityToggle productId={p.id} isActive={p.isActive} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        render={<Link href={`/admin/produk/${p.id}`}>Edit</Link>}
+                      />
+                      <form action={duplicateProduct.bind(null, p.id)}>
+                        <Button type="submit" variant="outline" size="sm">
+                          Duplikat
+                        </Button>
+                      </form>
+                      <DeleteProductButton productId={p.id} productName={p.name} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {g !== NO_GROUP && (
+              <Link
+                href={`/admin/produk/baru?grup=${encodeURIComponent(g)}`}
+                className="block border-t py-3 text-sm font-bold text-primary hover:underline"
+              >
+                + Tambah produk di {g}
+              </Link>
+            )}
           </details>
         );
       })}
