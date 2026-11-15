@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import type { CartItem } from "@/lib/store/cart";
 import { chargeableWeightGrams, getShippingRates } from "@/lib/rajaongkir";
 import { getCurrentCustomer } from "@/lib/customer-auth";
+import { OutOfStockError, syncProductTotals, takeVariantStock } from "@/lib/product-stock";
 
 export type CheckoutState = { error?: string } | undefined;
 
@@ -78,6 +79,7 @@ export async function createOrder(
   const productIds = cart.map((i) => i.productId);
   const products = await prisma.product.findMany({
     where: { id: { in: productIds }, isActive: true },
+    include: { variants: true },
   });
   const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -90,17 +92,40 @@ export async function createOrder(
     productTypeSnapshot: "READY" | "PO";
     weightGramsSnapshot: number;
     variantSnapshot: string | null;
+    variantId: string;
+    costSnapshot: number | null;
     qty: number;
     lineTotal: number;
   }[] = [];
+  // Units wanted per variant across all cart lines, for the stock check.
+  const wanted = new Map<string, number>();
 
   for (const cartItem of cart) {
     const product = productMap.get(cartItem.productId);
     if (!product) {
       return { error: `Product "${cartItem.name}" is no longer available.` };
     }
-    if (product.type === "READY" && (product.stockQty ?? 0) < cartItem.qty) {
-      return { error: `Not enough stock for "${product.name}" (${product.stockQty} left).` };
+    const qty = Math.floor(Number(cartItem.qty));
+    if (!Number.isFinite(qty) || qty < 1 || qty > 1000) {
+      return { error: `Invalid quantity for "${product.name}".` };
+    }
+    // Prefer the exact variant id; carts saved before per-variant pricing
+    // only know the variant name ("" / null for products without options).
+    const variant =
+      product.variants.find((v) => v.id === cartItem.variantId) ??
+      product.variants.find((v) => v.name === (cartItem.variant ?? ""));
+    if (!variant) {
+      return {
+        error: `The option you picked for "${product.name}" is no longer available. Please remove it from the cart and choose again.`,
+      };
+    }
+    const label = variant.name ? `${product.name} (${variant.name})` : product.name;
+    if (product.type === "READY") {
+      const total = (wanted.get(variant.id) ?? 0) + qty;
+      wanted.set(variant.id, total);
+      if ((variant.stockQty ?? 0) < total) {
+        return { error: `Not enough stock for "${label}" (${variant.stockQty ?? 0} left).` };
+      }
     }
 
     const unitChargeable = chargeableWeightGrams(
@@ -110,18 +135,20 @@ export async function createOrder(
       product.heightCm
     );
 
-    const lineTotal = product.price * cartItem.qty;
+    const lineTotal = variant.price * qty;
     itemsSubtotal += lineTotal;
-    totalWeightGrams += unitChargeable * cartItem.qty;
+    totalWeightGrams += unitChargeable * qty;
 
     orderItemsData.push({
       productId: product.id,
       productNameSnapshot: product.name,
-      productPriceSnapshot: product.price,
+      productPriceSnapshot: variant.price,
       productTypeSnapshot: product.type,
       weightGramsSnapshot: product.weightGrams,
-      variantSnapshot: cartItem.variant ?? null,
-      qty: cartItem.qty,
+      variantSnapshot: variant.name || null,
+      variantId: variant.id,
+      costSnapshot: product.type === "READY" ? variant.avgCost : null,
+      qty,
       lineTotal,
     });
   }
@@ -149,43 +176,61 @@ export async function createOrder(
   const orderNumber = await generateOrderNumber();
   const customer = await getCurrentCustomer();
 
-  const order = await prisma.$transaction(async (tx) => {
-    const created = await tx.order.create({
-      data: {
-        orderNumber,
-        customerId: customer?.id,
-        customerName,
-        customerPhone,
-        shippingAddress,
-        shippingDistrict,
-        shippingCity,
-        shippingProvince,
-        shippingPostalCode,
-        rajaongkirDestinationId,
-        courier: courierEnum,
-        courierService: matchedRate.service,
-        chargeableWeightGrams: chargeableGrams,
-        shippingCost,
-        shippingQuoteRaw: matchedRate,
-        itemsSubtotal,
-        totalAmount: itemsSubtotal + shippingCost,
-        status: "PENDING_PAYMENT",
-        items: { create: orderItemsData },
-      },
+  // Defined as a function so an out-of-stock race inside the transaction can
+  // be turned into a friendly message below.
+  const placeOrder = () =>
+    prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          orderNumber,
+          customerId: customer?.id,
+          customerName,
+          customerPhone,
+          shippingAddress,
+          shippingDistrict,
+          shippingCity,
+          shippingProvince,
+          shippingPostalCode,
+          rajaongkirDestinationId,
+          courier: courierEnum,
+          courierService: matchedRate.service,
+          chargeableWeightGrams: chargeableGrams,
+          shippingCost,
+          shippingQuoteRaw: matchedRate,
+          itemsSubtotal,
+          totalAmount: itemsSubtotal + shippingCost,
+          status: "PENDING_PAYMENT",
+          items: { create: orderItemsData },
+        },
+      });
+
+      // Re-checked inside the transaction: someone else may have bought the
+      // last units between the check above and now.
+      const touched = new Set<string>();
+      for (const item of orderItemsData) {
+        if (item.productTypeSnapshot === "READY") {
+          await takeVariantStock(tx, item.variantId, item.qty);
+          touched.add(item.productId);
+        }
+      }
+      for (const productId of touched) await syncProductTotals(tx, productId);
+
+      return created;
     });
 
-    for (const item of orderItemsData) {
-      const product = productMap.get(item.productId)!;
-      if (product.type === "READY") {
-        await tx.product.update({
-          where: { id: product.id },
-          data: { stockQty: { decrement: item.qty } },
-        });
-      }
+  let order;
+  try {
+    order = await placeOrder();
+  } catch (err) {
+    if (err instanceof OutOfStockError) {
+      const item = orderItemsData.find((i) => i.variantId === err.message);
+      const name = item?.variantSnapshot
+        ? `${item.productNameSnapshot} (${item.variantSnapshot})`
+        : item?.productNameSnapshot ?? "an item";
+      return { error: `Sorry, "${name}" just sold out. Please update your cart.` };
     }
-
-    return created;
-  });
+    throw err;
+  }
 
   if (customer && saveAddress) {
     const isFirst =

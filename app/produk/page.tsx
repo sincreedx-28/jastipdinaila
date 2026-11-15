@@ -9,7 +9,10 @@ import { TypeTabs, type ProductTypeFilter } from "@/components/storefront/type-t
 async function getAllProducts() {
   return prisma.product.findMany({
     where: { isActive: true },
-    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+    include: {
+      images: { orderBy: { sortOrder: "asc" }, take: 1 },
+      variants: { select: { price: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -71,6 +74,7 @@ export default async function ProductsPage({
     name: p.name,
     type: p.type,
     price: p.price,
+    priceMax: Math.max(p.price, ...p.variants.map((v) => v.price)),
     stockQty: p.stockQty,
     imageUrl: p.images[0]?.url ?? null,
     category: p.category,
