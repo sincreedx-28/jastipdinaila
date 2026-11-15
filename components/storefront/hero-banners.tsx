@@ -119,10 +119,13 @@ export function HeroBanners({ banners }: { banners: Banner[] }) {
               )}
             </>
           );
-          const cls = `banner-${b.color} relative block flex-none snap-start overflow-hidden rounded-2xl ${
+          // Width (not flex-basis) + a min-height floor: iOS Safari can collapse
+          // an aspect-ratio flex item to zero height when its size comes only
+          // from flex-basis and all of its content is absolutely positioned.
+          const cls = `banner-${b.color} relative block shrink-0 grow-0 snap-start overflow-hidden rounded-2xl min-h-[140px] ${
             single
-              ? "basis-full aspect-[12/5] md:aspect-auto md:h-[clamp(160px,22vw,280px)]"
-              : "basis-[88%] aspect-[12/5] md:basis-[calc(50%-6px)]"
+              ? "w-full aspect-[12/5] md:aspect-auto md:h-[clamp(160px,22vw,280px)]"
+              : "w-[88%] aspect-[12/5] md:w-[calc(50%-6px)]"
           }`;
           return b.link ? (
             <Link key={b.id} href={b.link} className={cls} aria-label={b.title || `Banner ${i + 1}`}>
