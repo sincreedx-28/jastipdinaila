@@ -12,7 +12,10 @@ async function getHomeProducts() {
   const [featured, groupSource, readyCount, poCount, banners] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
-      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      include: {
+      images: { orderBy: { sortOrder: "asc" }, take: 1 },
+      variants: { select: { price: true } },
+    },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
@@ -100,6 +103,7 @@ export default async function Home() {
                     name: p.name,
                     type: p.type,
                     price: p.price,
+                    priceMax: Math.max(p.price, ...p.variants.map((v) => v.price)),
                     stockQty: p.stockQty,
                     imageUrl: p.images[0]?.url ?? null,
                     category: p.category,

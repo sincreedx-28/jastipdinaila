@@ -15,6 +15,9 @@ export type CartItem = {
   // Two variants of the same product are separate cart lines — null means
   // "this product has no variants".
   variant: string | null;
+  // ProductVariant id. Missing on carts saved before per-variant pricing —
+  // checkout then falls back to matching the variant by name.
+  variantId?: string | null;
   qty: number;
 };
 

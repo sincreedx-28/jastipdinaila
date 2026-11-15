@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
 import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
+import { formatPriceRange } from "@/lib/variant-types";
 
 export default async function ProductDetailPage({
   params,
@@ -18,13 +19,19 @@ export default async function ProductDetailPage({
   const [product, customer] = await Promise.all([
     prisma.product.findUnique({
       where: { slug, isActive: true },
-      include: { images: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { orderBy: { sortOrder: "asc" } },
+      },
     }),
     getCurrentCustomer(),
   ]);
 
   if (!product) notFound();
   const soldOut = product.type === "READY" && (product.stockQty ?? 0) <= 0;
+  const prices = product.variants.map((v) => v.price);
+  const minPrice = prices.length ? Math.min(...prices) : product.price;
+  const maxPrice = prices.length ? Math.max(...prices) : product.price;
   const mainImage = product.images[0]?.url ?? null;
 
   return (
@@ -71,7 +78,7 @@ export default async function ProductDetailPage({
             </Badge>
             <h1 className="mt-2 font-heading text-2xl font-bold">{product.name}</h1>
             <p className="mt-1 text-xl font-extrabold text-primary">
-              Rp{product.price.toLocaleString("id-ID")}
+              {formatPriceRange(minPrice, maxPrice)}
             </p>
           </div>
 
@@ -90,13 +97,17 @@ export default async function ProductDetailPage({
 
           <AddToCartButton
             soldOut={soldOut}
-            variants={product.variants}
+            variants={product.variants.map((v) => ({
+              id: v.id,
+              name: v.name,
+              price: v.price,
+              stockQty: product.type === "READY" ? v.stockQty ?? 0 : null,
+            }))}
             product={{
               productId: product.id,
               slug: product.slug,
               name: product.name,
               type: product.type,
-              price: product.price,
               weightGrams: product.weightGrams,
               lengthCm: product.lengthCm,
               widthCm: product.widthCm,

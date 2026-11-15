@@ -228,6 +228,161 @@
   padding: 8px;
 }
 
+/* Admin panel ("Kelola toko") — same pink palette as the storefront, with
+   the Outfit + DM Sans type and the soft, rounded controls of the original
+   jastipdinaila design. Applied on the admin layout root and the login page.
+   These rules are deliberately unlayered so they win over the shadcn
+   components' utility classes inside the admin only. */
+.theme-admin {
+  --background: #ffffff;
+  --foreground: #3b2224;
+  --card: #ffffff;
+  --card-foreground: #3b2224;
+  --popover: #ffffff;
+  --popover-foreground: #3b2224;
+  --primary: #b9575e;
+  --primary-foreground: #ffffff;
+  --secondary: #fdeceb;
+  --secondary-foreground: #8f3c43;
+  --muted: #fdeceb;
+  --muted-foreground: #86696b;
+  --accent: #fdeceb;
+  --accent-foreground: #3b2224;
+  --border: #f5d3d2;
+  --input: #f5d3d2;
+  --ring: #b9575e;
+  --destructive: #b42318;
+  --rose-deep: #8f3c43;
+  --rose-glow: #f3a5a7;
+  --radius: 0.75rem;
+  --font-heading: var(--font-outfit);
+  --font-sans: var(--font-dm-sans);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+.theme-admin h1,
+.theme-admin h2,
+.theme-admin h3,
+.theme-admin .font-heading {
+  font-family: var(--font-outfit), var(--font-dm-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.theme-admin .no-scrollbar {
+  scrollbar-width: none;
+}
+.theme-admin .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.theme-admin :is([data-slot="button"], [data-slot="dialog-trigger"], [data-slot="dialog-close"]) {
+  border-radius: 12px;
+  font-weight: 700;
+}
+.theme-admin :is([data-slot="button"], [data-slot="dialog-trigger"], [data-slot="dialog-close"])[data-size]:not([data-size^="icon"]) {
+  min-height: 40px;
+  padding-inline: 16px;
+  font-size: 14px;
+}
+.theme-admin [data-size="sm"]:not([data-slot="select-trigger"]) {
+  min-height: 36px;
+  padding-inline: 12px;
+}
+.theme-admin [data-variant="outline"],
+.theme-admin [data-variant="secondary"] {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border-color: transparent;
+}
+.theme-admin [data-variant="outline"]:hover,
+.theme-admin [data-variant="secondary"]:hover {
+  background: color-mix(in srgb, var(--secondary), var(--primary) 14%);
+}
+.theme-admin [data-variant="ghost"] {
+  color: var(--secondary-foreground);
+}
+.theme-admin [data-slot="input"],
+.theme-admin [data-slot="textarea"],
+.theme-admin [data-slot="select-trigger"] {
+  min-height: 44px;
+  border-radius: 12px;
+  border-color: var(--border);
+  background: #fff;
+  font-size: 16px;
+  padding-right: 14px;
+}
+/* Left padding only where the field has no "Rp" prefix inside it. */
+.theme-admin :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]):not([class*="pl-"]) {
+  padding-left: 14px;
+}
+.theme-admin [data-slot="select-trigger"] {
+  padding-right: 10px;
+}
+.theme-admin [data-slot="input"][type="file"] {
+  padding-block: 8px;
+}
+.theme-admin [data-slot="label"] {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.theme-admin [data-slot="card"] {
+  border-radius: 18px;
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+.theme-admin [data-slot="badge"] {
+  font-weight: 700;
+}
+.theme-admin [data-slot="table-head"] {
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+/* Pill used for tabs, filter chips and choice buttons. */
+.theme-admin .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.theme-admin .pill:hover {
+  background: var(--secondary);
+}
+.theme-admin .pill[data-active="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.theme-admin .pill-outline-brand {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+/* Rounded section box, like the category groups in the design. */
+.theme-admin .box {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+}
+.theme-admin .soft-note {
+  border-radius: 12px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  padding: 12px 14px;
+  font-size: 14px;
+}
+.theme-admin input[type="checkbox"],
+.theme-admin input[type="radio"] {
+  accent-color: var(--primary);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

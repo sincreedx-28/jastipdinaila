@@ -14,7 +14,7 @@ export default async function AdminSettingsPage() {
   return (
     <div className="max-w-lg space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Pengaturan</h1>
+        <h2 className="text-2xl">Pengaturan</h2>
         <p className="text-sm text-muted-foreground">
           Info ini ditampilkan ke pelanggan di halaman pembayaran & status pesanan.
         </p>

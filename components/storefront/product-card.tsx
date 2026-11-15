@@ -9,6 +9,8 @@ export type ProductCardData = {
   name: string;
   type: "READY" | "PO";
   price: number;
+  /** Highest variant price, when variants are priced differently. */
+  priceMax?: number | null;
   imageUrl: string | null;
   stockQty: number | null;
   category?: string | null;
@@ -55,6 +57,9 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           )}
           <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
           <p className="text-base font-extrabold text-primary">
+            {product.priceMax && product.priceMax > product.price && (
+              <span className="mr-1 text-xs font-semibold text-muted-foreground">From</span>
+            )}
             Rp{product.price.toLocaleString("id-ID")}
           </p>
         </CardContent>

@@ -22,7 +22,7 @@ export default async function AdminBannerPage() {
   return (
     <div className="max-w-4xl space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Banner Beranda</h1>
+        <h2 className="text-2xl">Banner beranda</h2>
         <p className="text-sm text-muted-foreground">
           Tampil paling atas di beranda dan bergeser otomatis. Ukuran gambar ideal 1200 × 500 px,
           atau cukup isi judul dan pilih warna tanpa gambar.

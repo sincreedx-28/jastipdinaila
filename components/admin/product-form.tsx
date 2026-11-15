@@ -2,20 +2,15 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { ProductFormState } from "@/lib/actions/products";
 import { deleteProductImage } from "@/lib/actions/products";
-import { CurrencyInput } from "@/components/admin/currency-input";
+import { VariantEditor } from "@/components/admin/variant-editor";
+import type { VariantRowValue } from "@/lib/variant-types";
 
 type ExistingImage = { id: string; url: string };
 
@@ -23,221 +18,194 @@ type ProductFormValues = {
   name: string;
   description: string;
   type: "READY" | "PO";
-  price: number;
   weightGrams: number;
   lengthCm: number;
   widthCm: number;
   heightCm: number;
-  stockQty: number | null;
   group?: string | null;
   category?: string | null;
-  variants?: string[];
+  variants?: VariantRowValue[];
 };
+
+function Field({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={htmlFor}>
+        {label}
+        {hint && <span className="font-normal text-muted-foreground">{hint}</span>}
+      </Label>
+      {children}
+    </div>
+  );
+}
 
 export function ProductForm({
   action,
   defaultValues,
+  defaultGroup,
   existingImages,
   submitLabel,
+  isOwner,
 }: {
   action: (state: ProductFormState, formData: FormData) => Promise<ProductFormState>;
   defaultValues?: ProductFormValues;
+  /** Pre-filled category when adding from a category box in the list. */
+  defaultGroup?: string;
   existingImages?: ExistingImage[];
   submitLabel: string;
+  /** Owner (super admin) also sees and enters purchase prices. */
+  isOwner: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [type, setType] = useState<"READY" | "PO">(defaultValues?.type ?? "READY");
   const [images, setImages] = useState(existingImages ?? []);
 
   return (
-    <form action={formAction} className="max-w-2xl space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="name">Nama Produk</Label>
+    <form action={formAction} className="max-w-2xl space-y-5">
+      <Field label="Nama produk" htmlFor="name">
         <Input id="name" name="name" defaultValue={defaultValues?.name} required />
-      </div>
+      </Field>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Deskripsi</Label>
-        <Textarea
-          id="description"
-          name="description"
-          defaultValue={defaultValues?.description}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="group">Grup</Label>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Kategori" htmlFor="group">
           <Input
             id="group"
             name="group"
-            placeholder="Skincare, Fashion, dll"
-            defaultValue={defaultValues?.group ?? ""}
+            placeholder="mis. Skincare, Fashion"
+            defaultValue={defaultValues?.group ?? defaultGroup ?? ""}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="category">Kategori</Label>
+        </Field>
+        <Field label="Sub-kategori" htmlFor="category" hint="(opsional)">
           <Input
             id="category"
             name="category"
-            placeholder="Toner, Top, dll"
+            placeholder="mis. Toner, Atasan"
             defaultValue={defaultValues?.category ?? ""}
           />
+        </Field>
+      </div>
+
+      <fieldset className="space-y-2">
+        <legend className="mb-2 text-sm font-semibold">Jenis barang</legend>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["READY", "Ready stock"],
+              ["PO", "Pre-order"],
+            ] as const
+          ).map(([value, label]) => (
+            <label
+              key={value}
+              className="pill cursor-pointer gap-2.5"
+              data-active={false}
+              style={type === value ? { borderColor: "var(--primary)" } : undefined}
+            >
+              <input
+                type="radio"
+                name="type"
+                value={value}
+                checked={type === value}
+                onChange={() => setType(value)}
+                className="h-4.5 w-4.5"
+              />
+              {label}
+            </label>
+          ))}
         </div>
-      </div>
-      <p className="-mt-4 text-xs text-muted-foreground">
-        Grup = pengelompokan besar di menu (mis. Skincare), Kategori = filter yang lebih
-        spesifik di dalamnya (mis. Toner). Kosongkan kalau belum mau dikategorikan.
-      </p>
+      </fieldset>
 
-      <div className="space-y-2">
-        <Label htmlFor="variants">Varian</Label>
-        <Input
-          id="variants"
-          name="variants"
-          placeholder="S, M, L (pisahkan dengan koma)"
-          defaultValue={defaultValues?.variants?.join(", ") ?? ""}
-        />
-        <p className="text-xs text-muted-foreground">
-          Cuma label pilihan (ukuran/warna/dll), harga dan stok tetap sama untuk semua
-          varian. Kosongkan kalau produk ini tidak punya varian.
-        </p>
-      </div>
+      <VariantEditor type={type} isOwner={isOwner} initial={defaultValues?.variants} />
 
-      <div className="space-y-2">
-        <Label htmlFor="type">Tipe Produk</Label>
-        <Select name="type" value={type} onValueChange={(v) => setType(v as "READY" | "PO")}>
-          <SelectTrigger id="type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="READY">Ready Stock</SelectItem>
-            <SelectItem value="PO">Pre Order</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="price">Harga Jual</Label>
-        <CurrencyInput id="price" name="price" defaultValue={defaultValues?.price} required />
-        <p className="text-xs text-muted-foreground">
-          Ini harga final yang dilihat pelanggan — fee jastip sudah termasuk di sini.
-        </p>
-      </div>
-
-      {type === "READY" && (
-        <div className="space-y-2">
-          <Label htmlFor="stockQty">Stok Tersedia</Label>
+      <Field label="Foto produk">
+        <div className="flex flex-wrap items-center gap-3">
+          {images.map((img) => (
+            <div key={img.id} className="relative">
+              <Image
+                src={img.url}
+                alt=""
+                width={88}
+                height={88}
+                className="h-22 w-22 rounded-2xl object-cover"
+              />
+              <button
+                type="button"
+                aria-label="Hapus foto"
+                onClick={async () => {
+                  await deleteProductImage(img.id);
+                  setImages((prev) => prev.filter((i) => i.id !== img.id));
+                }}
+                className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow"
+              >
+                ×
+              </button>
+            </div>
+          ))}
           <Input
-            id="stockQty"
-            name="stockQty"
-            type="number"
-            min={0}
-            defaultValue={defaultValues?.stockQty ?? undefined}
-            required
+            id="images"
+            name="images"
+            type="file"
+            accept="image/*"
+            multiple
+            aria-label={images.length > 0 ? "Tambah foto" : "Upload foto"}
+            className="w-auto max-w-full"
           />
         </div>
-      )}
+      </Field>
 
-      <div className="space-y-2">
-        <Label>Berat &amp; Dimensi (untuk hitung ongkir)</Label>
-        <div className="grid grid-cols-4 gap-3">
-          <div>
-            <Label htmlFor="weightGrams" className="text-xs text-muted-foreground">
-              Berat (gram)
-            </Label>
-            <Input
-              id="weightGrams"
-              name="weightGrams"
-              type="number"
-              min={1}
-              defaultValue={defaultValues?.weightGrams}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="lengthCm" className="text-xs text-muted-foreground">
-              Panjang (cm)
-            </Label>
-            <Input
-              id="lengthCm"
-              name="lengthCm"
-              type="number"
-              min={1}
-              defaultValue={defaultValues?.lengthCm}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="widthCm" className="text-xs text-muted-foreground">
-              Lebar (cm)
-            </Label>
-            <Input
-              id="widthCm"
-              name="widthCm"
-              type="number"
-              min={1}
-              defaultValue={defaultValues?.widthCm}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="heightCm" className="text-xs text-muted-foreground">
-              Tinggi (cm)
-            </Label>
-            <Input
-              id="heightCm"
-              name="heightCm"
-              type="number"
-              min={1}
-              defaultValue={defaultValues?.heightCm}
-              required
-            />
-          </div>
+      <Field label="Deskripsi" htmlFor="description">
+        <Textarea
+          id="description"
+          name="description"
+          rows={4}
+          defaultValue={defaultValues?.description}
+        />
+      </Field>
+
+      <Field label="Berat & ukuran paket" hint=" · untuk hitung ongkir">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(
+            [
+              ["weightGrams", "Berat (gram)", defaultValues?.weightGrams],
+              ["lengthCm", "Panjang (cm)", defaultValues?.lengthCm],
+              ["widthCm", "Lebar (cm)", defaultValues?.widthCm],
+              ["heightCm", "Tinggi (cm)", defaultValues?.heightCm],
+            ] as const
+          ).map(([name, label, value]) => (
+            <div key={name} className="space-y-1">
+              <span className="text-xs text-muted-foreground">{label}</span>
+              <Input
+                id={name}
+                name={name}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                aria-label={label}
+                defaultValue={value}
+                required
+              />
+            </div>
+          ))}
         </div>
+      </Field>
+
+      {state?.error && <p className="soft-note text-destructive!">{state.error}</p>}
+
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Menyimpan..." : submitLabel}
+        </Button>
+        <Button variant="outline" render={<Link href="/admin/produk">Batal</Link>} />
       </div>
-
-      {images.length > 0 && (
-        <div className="space-y-2">
-          <Label>Foto Saat Ini</Label>
-          <div className="flex flex-wrap gap-3">
-            {images.map((img) => (
-              <div key={img.id} className="relative">
-                <Image
-                  src={img.url}
-                  alt=""
-                  width={80}
-                  height={80}
-                  className="rounded object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await deleteProductImage(img.id);
-                    setImages((prev) => prev.filter((i) => i.id !== img.id));
-                  }}
-                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-destructive-foreground"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="images">
-          {images.length > 0 ? "Tambah Foto" : "Foto Produk"}
-        </Label>
-        <Input id="images" name="images" type="file" accept="image/*" multiple />
-      </div>
-
-      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-
-      <Button type="submit" disabled={pending}>
-        {pending ? "Menyimpan..." : submitLabel}
-      </Button>
     </form>
   );
 }

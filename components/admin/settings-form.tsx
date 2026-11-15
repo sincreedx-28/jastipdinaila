@@ -12,8 +12,8 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsMap }) 
 
   return (
     <form action={formAction} className="space-y-6">
-      <section className="space-y-4">
-        <h2 className="text-sm font-medium">Info Rekening Transfer</h2>
+      <section className="box space-y-4 p-4">
+        <h3 className="text-lg">Info rekening transfer</h3>
         <div className="space-y-2">
           <Label htmlFor="bank_name">Nama Bank</Label>
           <Input
@@ -43,8 +43,8 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsMap }) 
         </div>
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Kontak WhatsApp</h2>
+      <section className="box space-y-2 p-4">
+        <h3 className="text-lg">Kontak WhatsApp</h3>
         <div className="space-y-2">
           <Label htmlFor="whatsapp_number">Nomor WhatsApp Admin</Label>
           <Input

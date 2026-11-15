@@ -3,8 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAction } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductType } from "@/lib/generated/prisma/enums";
+import type { Prisma } from "@/lib/generated/prisma/client";
+import { syncProductTotals } from "@/lib/product-stock";
+import type { VariantInput } from "@/lib/variant-types";
 
 const PRODUCT_IMAGE_BUCKET = "product-images";
 
@@ -48,61 +52,169 @@ async function uploadProductImages(productId: string, files: File[]) {
   return uploaded;
 }
 
+function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("variantsJson") ?? "[]"));
+  } catch {
+    throw new Error("Data varian tidak valid.");
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error("Isi minimal satu harga jual.");
+  }
+
+  const toInt = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n) : NaN;
+  };
+
+  const rows: VariantInput[] = raw.map((r: Record<string, unknown>) => ({
+    id: typeof r.id === "string" && r.id ? r.id : undefined,
+    name: String(r.name ?? "").trim().slice(0, 60),
+    price: toInt(r.price),
+    initialStock:
+      type === "READY" && r.initialStock !== null && r.initialStock !== "" && r.initialStock !== undefined
+        ? toInt(r.initialStock)
+        : null,
+    initialCost:
+      r.initialCost !== null && r.initialCost !== "" && r.initialCost !== undefined
+        ? toInt(r.initialCost)
+        : null,
+  }));
+
+  if (rows.length > 50) throw new Error("Maksimal 50 varian per produk.");
+  if (rows.length > 1 && rows.some((r) => !r.name)) {
+    throw new Error("Setiap varian wajib diberi nama (mis. ukuran atau warna).");
+  }
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const key = r.name.toLowerCase();
+    if (seen.has(key)) throw new Error(`Nama varian "${r.name}" dobel.`);
+    seen.add(key);
+    const label = r.name ? `varian "${r.name}"` : "produk";
+    if (!Number.isFinite(r.price) || r.price <= 0) {
+      throw new Error(`Harga jual ${label} belum diisi.`);
+    }
+    if (r.initialStock !== null && r.initialStock !== undefined) {
+      if (!Number.isFinite(r.initialStock) || r.initialStock < 0) {
+        throw new Error(`Stok ${label} tidak valid.`);
+      }
+    }
+    if (r.initialCost !== null && r.initialCost !== undefined) {
+      if (!Number.isFinite(r.initialCost) || r.initialCost < 0) {
+        throw new Error(`Harga beli ${label} tidak valid.`);
+      }
+    }
+  }
+  return rows;
+}
+
 function parseProductFields(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const type = String(formData.get("type") ?? "READY") as ProductType;
-  const price = Number(formData.get("price"));
+  const typeRaw = String(formData.get("type") ?? "READY");
+  const type: ProductType = typeRaw === "PO" ? "PO" : "READY";
   const weightGrams = Number(formData.get("weightGrams"));
   const lengthCm = Number(formData.get("lengthCm"));
   const widthCm = Number(formData.get("widthCm"));
   const heightCm = Number(formData.get("heightCm"));
-  const stockQtyRaw = formData.get("stockQty");
-  const stockQty =
-    type === "READY" && stockQtyRaw ? Number(stockQtyRaw) : null;
   const group = String(formData.get("group") ?? "").trim() || null;
   const category = String(formData.get("category") ?? "").trim() || null;
-  const variants = String(formData.get("variants") ?? "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
 
   if (!name) throw new Error("Nama produk wajib diisi.");
-  if (!Number.isFinite(price) || price <= 0)
-    throw new Error("Harga jual tidak valid.");
   if (!Number.isFinite(weightGrams) || weightGrams <= 0)
     throw new Error("Berat tidak valid.");
   if (![lengthCm, widthCm, heightCm].every((n) => Number.isFinite(n) && n > 0))
     throw new Error("Dimensi (panjang/lebar/tinggi) tidak valid.");
-  if (type === "READY" && (stockQty === null || !Number.isFinite(stockQty) || stockQty < 0))
-    throw new Error("Stok wajib diisi untuk produk Ready.");
+
+  const variants = parseVariants(formData, type);
 
   return {
-    name,
-    description,
-    type,
-    price: Math.round(price),
-    weightGrams: Math.round(weightGrams),
-    lengthCm: Math.round(lengthCm),
-    widthCm: Math.round(widthCm),
-    heightCm: Math.round(heightCm),
-    stockQty,
-    group,
-    category,
+    fields: {
+      name,
+      description,
+      type,
+      weightGrams: Math.round(weightGrams),
+      lengthCm: Math.round(lengthCm),
+      widthCm: Math.round(widthCm),
+      heightCm: Math.round(heightCm),
+      group,
+      category,
+      // Mirrored into the legacy column so older code reading it still shows
+      // the option labels.
+      legacyVariants: variants.map((v) => v.name).filter(Boolean),
+    },
     variants,
   };
+}
+
+/**
+ * Records the first stock of a brand-new variant row. With a purchase price
+ * (owner only) it is a PURCHASE that sets the average cost; otherwise a plain
+ * ADJUSTMENT so the stock exists but the cost stays unknown.
+ */
+async function recordInitialStock(
+  tx: Prisma.TransactionClient,
+  variantId: string,
+  row: VariantInput,
+  admin: { id: string; name: string; isSuperAdmin: boolean }
+) {
+  const qty = row.initialStock ?? 0;
+  if (qty <= 0) return;
+  const cost = admin.isSuperAdmin && row.initialCost ? row.initialCost : null;
+  await tx.productVariant.update({
+    where: { id: variantId },
+    data: { avgCost: cost },
+  });
+  await tx.stockMovement.create({
+    data: {
+      variantId,
+      type: cost ? "PURCHASE" : "ADJUSTMENT",
+      qty,
+      unitCost: cost,
+      stockAfter: qty,
+      avgCostAfter: cost,
+      note: "Stok awal",
+      adminUserId: admin.id,
+      adminName: admin.name,
+    },
+  });
+}
+
+function revalidateProductPages(productId?: string) {
+  revalidatePath("/admin/produk");
+  if (productId) revalidatePath(`/admin/produk/${productId}`);
+  revalidatePath("/produk");
+  revalidatePath("/");
 }
 
 export async function createProduct(
   _prevState: ProductFormState,
   formData: FormData
 ): Promise<ProductFormState> {
+  const admin = await requireAdminAction();
   try {
-    const fields = parseProductFields(formData);
+    const { fields, variants } = parseProductFields(formData);
     const slug = slugify(fields.name);
 
-    const product = await prisma.product.create({
-      data: { ...fields, slug },
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: { ...fields, slug, price: variants[0].price },
+      });
+      for (const [i, row] of variants.entries()) {
+        const v = await tx.productVariant.create({
+          data: {
+            productId: created.id,
+            name: row.name,
+            sortOrder: i,
+            price: row.price,
+            stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
+          },
+        });
+        if (fields.type === "READY") await recordInitialStock(tx, v.id, row, admin);
+      }
+      await syncProductTotals(tx, created.id);
+      return created;
     });
 
     const files = formData.getAll("images").filter((f): f is File => f instanceof File);
@@ -116,8 +228,7 @@ export async function createProduct(
     return { error: err instanceof Error ? err.message : "Gagal menyimpan produk." };
   }
 
-  revalidatePath("/admin/produk");
-  revalidatePath("/produk");
+  revalidateProductPages();
   redirect("/admin/produk");
 }
 
@@ -126,12 +237,57 @@ export async function updateProduct(
   _prevState: ProductFormState,
   formData: FormData
 ): Promise<ProductFormState> {
+  const admin = await requireAdminAction();
   try {
-    const fields = parseProductFields(formData);
+    const { fields, variants } = parseProductFields(formData);
 
-    await prisma.product.update({
-      where: { id: productId },
-      data: fields,
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.productVariant.findMany({ where: { productId } });
+      const existingIds = new Set(existing.map((v) => v.id));
+      const kept = variants.filter((r) => r.id && existingIds.has(r.id));
+      const keptIds = new Set(kept.map((r) => r.id));
+
+      await tx.product.update({ where: { id: productId }, data: fields });
+
+      // Rows removed in the form. Past orders keep their own snapshot of the
+      // variant name and price, so this never changes order history.
+      await tx.productVariant.deleteMany({
+        where: { productId, id: { notIn: [...keptIds] as string[] } },
+      });
+
+      // Two passes so renames that swap names (e.g. S↔M) don't trip the
+      // unique (productId, name) index halfway through.
+      for (const row of kept) {
+        await tx.productVariant.update({ where: { id: row.id }, data: { name: `__${row.id}` } });
+      }
+      for (const [i, row] of variants.entries()) {
+        if (row.id && keptIds.has(row.id)) {
+          const before = existing.find((v) => v.id === row.id)!;
+          await tx.productVariant.update({
+            where: { id: row.id },
+            data: {
+              name: row.name,
+              sortOrder: i,
+              price: row.price,
+              // Switching READY ↔ PO: PO has no stock count; a product that
+              // becomes READY starts from 0 until stock is added.
+              stockQty: fields.type === "READY" ? before.stockQty ?? 0 : null,
+            },
+          });
+        } else {
+          const v = await tx.productVariant.create({
+            data: {
+              productId,
+              name: row.name,
+              sortOrder: i,
+              price: row.price,
+              stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
+            },
+          });
+          if (fields.type === "READY") await recordInitialStock(tx, v.id, row, admin);
+        }
+      }
+      await syncProductTotals(tx, productId);
     });
 
     const files = formData.getAll("images").filter((f): f is File => f instanceof File);
@@ -150,18 +306,87 @@ export async function updateProduct(
     return { error: err instanceof Error ? err.message : "Gagal menyimpan produk." };
   }
 
-  revalidatePath("/admin/produk");
-  revalidatePath("/produk");
+  revalidateProductPages(productId);
   redirect("/admin/produk");
 }
 
+/**
+ * Copies a product — details, variants, prices and photos — as a new,
+ * inactive product with no stock, then opens it for editing. Handy for PO
+ * items that come back every batch or near-identical items.
+ */
+export async function duplicateProduct(productId: string) {
+  await requireAdminAction();
+  const source = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      variants: { orderBy: { sortOrder: "asc" } },
+      images: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!source) return;
+
+  const name = `${source.name} (Salinan)`;
+  const copy = await prisma.$transaction(async (tx) => {
+    const created = await tx.product.create({
+      data: {
+        slug: slugify(name),
+        name,
+        description: source.description,
+        type: source.type,
+        price: source.price,
+        weightGrams: source.weightGrams,
+        lengthCm: source.lengthCm,
+        widthCm: source.widthCm,
+        heightCm: source.heightCm,
+        group: source.group,
+        category: source.category,
+        legacyVariants: source.legacyVariants,
+        isActive: false,
+        variants: {
+          create: source.variants.map((v) => ({
+            name: v.name,
+            sortOrder: v.sortOrder,
+            price: v.price,
+            stockQty: source.type === "READY" ? 0 : null,
+          })),
+        },
+      },
+    });
+    await syncProductTotals(tx, created.id);
+    return created;
+  });
+
+  // Photos are copied as separate files, so deleting a photo from one product
+  // never removes it from the other.
+  if (source.images.length > 0) {
+    const supabase = await createClient();
+    const images: { productId: string; url: string; sortOrder: number }[] = [];
+    for (const [i, img] of source.images.entries()) {
+      const from = img.url.split(`${PRODUCT_IMAGE_BUCKET}/`)[1];
+      if (!from) continue;
+      const to = `${copy.id}/${Date.now()}-${i}.${from.split(".").pop() || "jpg"}`;
+      const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).copy(from, to);
+      if (error) continue;
+      const { data } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(to);
+      images.push({ productId: copy.id, url: data.publicUrl, sortOrder: i });
+    }
+    if (images.length > 0) await prisma.productImage.createMany({ data: images });
+  }
+
+  revalidateProductPages();
+  redirect(`/admin/produk/${copy.id}?baru=salinan`);
+}
+
 export async function toggleProductActive(productId: string, isActive: boolean) {
+  await requireAdminAction();
   await prisma.product.update({ where: { id: productId }, data: { isActive } });
   revalidatePath("/admin/produk");
   revalidatePath("/produk");
 }
 
 export async function deleteProductImage(imageId: string) {
+  await requireAdminAction();
   const image = await prisma.productImage.findUnique({ where: { id: imageId } });
   if (!image) return;
 
@@ -175,6 +400,7 @@ export async function deleteProductImage(imageId: string) {
 }
 
 export async function deleteProduct(productId: string) {
+  await requireAdminAction();
   const product = await prisma.product.findUnique({
     where: { id: productId },
     include: { images: true },

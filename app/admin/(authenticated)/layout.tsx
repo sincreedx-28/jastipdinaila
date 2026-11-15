@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminBodyTheme } from "@/components/admin/admin-body-theme";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { signOut } from "@/lib/actions/auth";
@@ -44,7 +47,7 @@ async function requireAdmin() {
 }
 
 const navItems = [
-  { href: "/admin", label: "Dashboard" },
+  { href: "/admin", label: "Ringkasan" },
   { href: "/admin/produk", label: "Produk" },
   { href: "/admin/pesanan", label: "Pesanan" },
   { href: "/admin/banner", label: "Banner" },
@@ -59,34 +62,47 @@ export default async function AdminLayout({
   const admin = await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <nav className="flex items-center gap-4">
-            <span className="font-semibold">Jastipdinaila Admin</span>
-            {navItems
-              .filter((item) => !item.superAdminOnly || admin.isSuperAdmin)
-              .map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              ))}
-          </nav>
+    <div className="theme-admin min-h-screen">
+      <AdminBodyTheme />
+      <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
+        <div className="mx-auto max-w-5xl space-y-3 px-4 pt-3 pb-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{admin.email}</span>
-            <form action={signOut}>
-              <Button type="submit" variant="outline" size="sm">
-                Keluar
-              </Button>
-            </form>
+            <Link href="/" aria-label="Lihat toko" className="shrink-0 max-sm:hidden">
+              <Image
+                src="/logo-jastipdinaila-transparent.png"
+                alt="jastipdinaila"
+                width={120}
+                height={48}
+                className="h-10 w-auto"
+                priority
+              />
+            </Link>
+            <h1 className="flex min-w-0 items-center gap-2 text-2xl">
+              <span className="truncate">Kelola toko</span>
+              <span className="rounded-full bg-primary px-2.5 py-0.5 font-sans text-xs font-bold text-primary-foreground">
+                {admin.isSuperAdmin ? "Owner" : "Admin"}
+              </span>
+            </h1>
+            <div className="ml-auto flex items-center gap-2">
+              <Link
+                href="/"
+                className="text-sm font-bold text-primary hover:underline max-sm:hidden"
+              >
+                Lihat toko →
+              </Link>
+              <form action={signOut}>
+                <Button type="submit" variant="outline" size="sm">
+                  Keluar
+                </Button>
+              </form>
+            </div>
           </div>
+          <AdminNav
+            items={navItems.filter((item) => !item.superAdminOnly || admin.isSuperAdmin)}
+          />
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
     </div>
   );
 }

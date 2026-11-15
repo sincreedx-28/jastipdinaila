@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { orderStatusClass } from "@/lib/order-status";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
@@ -42,15 +44,21 @@ export default async function AdminOrderDetailPage({
   );
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Pesanan</p>
-        <h1 className="text-xl font-semibold">{order.orderNumber}</h1>
-        <Badge className="mt-1">{STATUS_LABELS[order.status] ?? order.status}</Badge>
+    <div className="max-w-2xl space-y-5">
+      <div className="space-y-1">
+        <Link href="/admin/pesanan" className="text-sm font-bold text-primary hover:underline">
+          ← Daftar pesanan
+        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl">{order.orderNumber}</h2>
+          <span className={orderStatusClass(order.status)}>
+            {STATUS_LABELS[order.status] ?? order.status}
+          </span>
+        </div>
       </div>
 
-      <div className="rounded-lg border p-4">
-        <h2 className="mb-2 text-sm font-medium">Data Pelanggan</h2>
+      <div className="box p-4">
+        <h3 className="mb-2 text-lg">Pelanggan</h3>
         <p className="text-sm">{order.customerName}</p>
         <p className="text-sm text-muted-foreground">
           {order.customerPhone}
@@ -59,14 +67,14 @@ export default async function AdminOrderDetailPage({
               href={customerWaLink}
               target="_blank"
               rel="noreferrer"
-              className="ml-2 text-primary underline"
+              className="ml-2 font-bold text-primary underline"
             >
               Chat WhatsApp
             </a>
           )}
         </p>
         <Separator className="my-3" />
-        <h2 className="mb-1 text-sm font-medium">Alamat Pengiriman</h2>
+        <h3 className="mb-1 text-lg">Alamat pengiriman</h3>
         <p className="text-sm">{order.shippingAddress}</p>
         <p className="text-sm text-muted-foreground">
           {order.shippingDistrict}, {order.shippingCity}, {order.shippingProvince}{" "}
@@ -77,8 +85,8 @@ export default async function AdminOrderDetailPage({
         </p>
       </div>
 
-      <div className="rounded-lg border p-4">
-        <h2 className="mb-2 text-sm font-medium">Rincian Pesanan</h2>
+      <div className="box p-4">
+        <h3 className="mb-2 text-lg">Rincian pesanan</h3>
         <div className="space-y-2">
           {order.items.map((item) => (
             <div key={item.id} className="flex justify-between text-sm">
@@ -99,7 +107,7 @@ export default async function AdminOrderDetailPage({
           <span>Rp{order.itemsSubtotal.toLocaleString("id-ID")}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Ongkos Kirim</span>
+          <span className="text-muted-foreground">Ongkos kirim</span>
           <span>Rp{order.shippingCost.toLocaleString("id-ID")}</span>
         </div>
         <div className="mt-1 flex justify-between font-semibold">
@@ -109,8 +117,8 @@ export default async function AdminOrderDetailPage({
       </div>
 
       {order.paymentProofUrl && (
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-2 text-sm font-medium">Bukti Transfer</h2>
+        <div className="box p-4">
+          <h3 className="mb-2 text-lg">Bukti transfer</h3>
           <a href={order.paymentProofUrl} target="_blank" rel="noreferrer">
             <Image
               src={order.paymentProofUrl}
@@ -124,14 +132,14 @@ export default async function AdminOrderDetailPage({
       )}
 
       {order.resiNumber && (
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-1 text-sm font-medium">Nomor Resi</h2>
+        <div className="box p-4">
+          <h3 className="mb-1 text-lg">Nomor resi</h3>
           <p className="text-sm">{order.resiNumber}</p>
         </div>
       )}
 
-      <div className="space-y-3 rounded-lg border p-4">
-        <h2 className="text-sm font-medium">Aksi</h2>
+      <div className="box space-y-3 p-4">
+        <h3 className="text-lg">Aksi</h3>
 
         {order.status === "PENDING_PAYMENT" && (
           <form
@@ -141,7 +149,7 @@ export default async function AdminOrderDetailPage({
             }}
           >
             <Button type="submit" className="w-full">
-              Tandai Sudah Dibayar
+              Tandai sudah dibayar
             </Button>
           </form>
         )}
@@ -155,7 +163,7 @@ export default async function AdminOrderDetailPage({
               }}
             >
               <Button type="submit" variant="outline" className="w-full">
-                Tandai Sedang Diproses
+                Tandai sedang diproses
               </Button>
             </form>
             <ShipOrderForm orderId={order.id} />
@@ -172,7 +180,7 @@ export default async function AdminOrderDetailPage({
             }}
           >
             <Button type="submit" className="w-full">
-              Tandai Selesai
+              Tandai selesai
             </Button>
           </form>
         )}
