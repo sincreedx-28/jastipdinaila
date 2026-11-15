@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAction } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductType } from "@/lib/generated/prisma/enums";
 
@@ -97,6 +98,7 @@ export async function createProduct(
   _prevState: ProductFormState,
   formData: FormData
 ): Promise<ProductFormState> {
+  await requireAdminAction();
   try {
     const fields = parseProductFields(formData);
     const slug = slugify(fields.name);
@@ -126,6 +128,7 @@ export async function updateProduct(
   _prevState: ProductFormState,
   formData: FormData
 ): Promise<ProductFormState> {
+  await requireAdminAction();
   try {
     const fields = parseProductFields(formData);
 
@@ -156,12 +159,14 @@ export async function updateProduct(
 }
 
 export async function toggleProductActive(productId: string, isActive: boolean) {
+  await requireAdminAction();
   await prisma.product.update({ where: { id: productId }, data: { isActive } });
   revalidatePath("/admin/produk");
   revalidatePath("/produk");
 }
 
 export async function deleteProductImage(imageId: string) {
+  await requireAdminAction();
   const image = await prisma.productImage.findUnique({ where: { id: imageId } });
   if (!image) return;
 
@@ -175,6 +180,7 @@ export async function deleteProductImage(imageId: string) {
 }
 
 export async function deleteProduct(productId: string) {
+  await requireAdminAction();
   const product = await prisma.product.findUnique({
     where: { id: productId },
     include: { images: true },

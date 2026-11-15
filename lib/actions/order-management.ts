@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAction } from "@/lib/admin-auth";
 
 export async function markOrderPaid(orderId: string) {
+  await requireAdminAction();
   await prisma.order.update({
     where: { id: orderId },
     data: { status: "PAID", paidAt: new Date() },
@@ -14,6 +16,7 @@ export async function markOrderPaid(orderId: string) {
 }
 
 export async function markOrderProcessing(orderId: string) {
+  await requireAdminAction();
   await prisma.order.update({
     where: { id: orderId },
     data: { status: "PROCESSING" },
@@ -30,6 +33,7 @@ export async function shipOrder(
   _prevState: ShipOrderState,
   formData: FormData
 ): Promise<ShipOrderState> {
+  await requireAdminAction();
   const resiNumber = String(formData.get("resiNumber") ?? "").trim();
   if (!resiNumber) {
     return { error: "Nomor resi wajib diisi." };
@@ -45,6 +49,7 @@ export async function shipOrder(
 }
 
 export async function markOrderCompleted(orderId: string) {
+  await requireAdminAction();
   await prisma.order.update({
     where: { id: orderId },
     data: { status: "COMPLETED", completedAt: new Date() },
@@ -55,6 +60,7 @@ export async function markOrderCompleted(orderId: string) {
 }
 
 export async function cancelOrder(orderId: string) {
+  await requireAdminAction();
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { items: true },
@@ -83,6 +89,7 @@ export async function cancelOrder(orderId: string) {
 }
 
 export async function updateOrderNotes(orderId: string, notes: string) {
+  await requireAdminAction();
   await prisma.order.update({ where: { id: orderId }, data: { notes } });
   revalidatePath(`/admin/pesanan/${orderId}`);
 }
