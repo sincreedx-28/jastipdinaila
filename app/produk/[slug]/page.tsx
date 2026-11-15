@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
+import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 
 export default async function ProductDetailPage({
   params,
@@ -40,9 +41,7 @@ export default async function ProductDetailPage({
             {mainImage ? (
               <Image src={mainImage} alt={product.name} fill className="object-cover" />
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                No photo
-              </div>
+              <ProductPlaceholder name={product.name} size="lg" />
             )}
           </div>
           {product.images.length > 1 && (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 
 export type ProductCardData = {
   slug: string;
@@ -29,9 +30,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               sizes="(min-width: 768px) 25vw, 50vw"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-              No photo
-            </div>
+            <ProductPlaceholder name={product.name} />
           )}
           {product.type === "READY" ? (
             <Badge className="absolute left-2 top-2">Ready</Badge>
