@@ -7,9 +7,9 @@ import { listPoEventOptions } from "@/lib/po-events";
 export default async function NewProductPage({
   searchParams,
 }: {
-  searchParams: Promise<{ grup?: string }>;
+  searchParams: Promise<{ grup?: string; batch?: string }>;
 }) {
-  const [{ grup }, admin, poEvents] = await Promise.all([
+  const [{ grup, batch }, admin, poEvents] = await Promise.all([
     searchParams,
     getCurrentAdmin(),
     listPoEventOptions(),
@@ -26,6 +26,7 @@ export default async function NewProductPage({
         action={createProduct}
         submitLabel="Simpan produk"
         defaultGroup={grup}
+        defaultBatch={poEvents.some((e) => e.id === batch) ? batch : undefined}
         isOwner={Boolean(admin?.isSuperAdmin)}
         poEvents={poEvents}
       />

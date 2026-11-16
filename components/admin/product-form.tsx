@@ -57,6 +57,7 @@ export function ProductForm({
   action,
   defaultValues,
   defaultGroup,
+  defaultBatch,
   existingImages,
   submitLabel,
   isOwner,
@@ -66,6 +67,8 @@ export function ProductForm({
   defaultValues?: ProductFormValues;
   /** Pre-filled category when adding from a category box in the list. */
   defaultGroup?: string;
+  /** Adding from a PO batch box: starts as Pre-Order in that batch. */
+  defaultBatch?: string;
   existingImages?: ExistingImage[];
   submitLabel: string;
   /** Owner (super admin) also sees and enters purchase prices. */
@@ -74,7 +77,9 @@ export function ProductForm({
   poEvents: PoEventOption[];
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  const [type, setType] = useState<"READY" | "PO">(defaultValues?.type ?? "READY");
+  const [type, setType] = useState<"READY" | "PO">(
+    defaultValues?.type ?? (defaultBatch ? "PO" : "READY")
+  );
   const [images, setImages] = useState(existingImages ?? []);
   const [shrinking, setShrinking] = useState(false);
 
@@ -137,7 +142,9 @@ export function ProductForm({
           <select
             id="poEventId"
             name="poEventId"
-            defaultValue={defaultValues?.poEventId ?? poEvents.find((e) => !e.archived)?.id ?? ""}
+            defaultValue={
+              defaultValues?.poEventId ?? defaultBatch ?? poEvents.find((e) => !e.archived)?.id ?? ""
+            }
             className="h-11 w-full rounded-xl border bg-background px-3 text-base"
           >
             <option value="">Belum masuk batch mana pun</option>
