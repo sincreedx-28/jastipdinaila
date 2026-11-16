@@ -20,10 +20,13 @@ export function AddToCartButton({
   product,
   variants,
   soldOut,
+  unavailableLabel,
 }: {
   product: Omit<CartItem, "qty" | "variant" | "variantId" | "price">;
   variants: BuyVariant[];
   soldOut: boolean;
+  /** Shown instead of "Out of Stock", e.g. for a closed pre-order. */
+  unavailableLabel?: string;
 }) {
   const available = (v: BuyVariant) => v.stockQty === null || v.stockQty > 0;
   const [qty, setQty] = useState(1);
@@ -48,7 +51,7 @@ export function AddToCartButton({
   if (soldOut || !selected) {
     return (
       <Button disabled className="w-full">
-        Out of Stock
+        {unavailableLabel ?? "Out of Stock"}
       </Button>
     );
   }

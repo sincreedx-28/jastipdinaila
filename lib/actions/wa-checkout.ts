@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { poEventSelect } from "@/lib/shop-visibility";
+import { toEventInfo } from "@/lib/po-event-info";
+import { eventState } from "@/lib/po-event-state";
 import { OutOfStockError, syncProductTotals, takeVariantStock } from "@/lib/product-stock";
 import { getSettings } from "@/lib/settings";
 import type { CartItem } from "@/lib/store/cart";
@@ -26,7 +29,7 @@ export async function checkWaCheckout(cart: CartItem[]): Promise<WaCheckoutCheck
     getSettings(),
     prisma.product.findMany({
       where: { id: { in: cart.map((c) => String(c.productId)) }, isActive: true },
-      include: { variants: true, poEvent: { select: { name: true } } },
+      include: { variants: true, poEvent: { select: poEventSelect } },
     }),
   ]);
   const waNumber = settings.whatsapp_number.replace(/\D/g, "").replace(/^0/, "62");
@@ -47,6 +50,17 @@ export async function checkWaCheckout(cart: CartItem[]): Promise<WaCheckoutCheck
     if (!v) {
       problems.push(`The option you picked for "${p.name}" is no longer available.`);
       continue;
+    }
+    if (p.type === "PO" && p.poEvent) {
+      const st = eventState(toEventInfo(p.poEvent));
+      if (st !== "open") {
+        problems.push(
+          st === "soon"
+            ? `Pre-orders for "${p.name}" haven't opened yet.`
+            : `Pre-orders for "${p.name}" (${p.poEvent.name}) are closed.`
+        );
+        continue;
+      }
     }
     const qty = Math.max(1, Math.min(999, Math.floor(Number(c.qty)) || 1));
     if (p.type === "READY" && (v.stockQty ?? 0) < qty) {

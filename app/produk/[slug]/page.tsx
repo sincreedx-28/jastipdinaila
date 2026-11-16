@@ -9,6 +9,10 @@ import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
 import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { formatPriceRange } from "@/lib/variant-types";
+import { poEventSelect, shopVisible } from "@/lib/shop-visibility";
+import { toEventInfo } from "@/lib/po-event-info";
+import { eventState, fmtDay } from "@/lib/po-event-state";
+import { PoEventHeader } from "@/components/storefront/po-event-header";
 
 export default async function ProductDetailPage({
   params,
@@ -17,11 +21,12 @@ export default async function ProductDetailPage({
 }) {
   const { slug } = await params;
   const [product, customer] = await Promise.all([
-    prisma.product.findUnique({
-      where: { slug, isActive: true },
+    prisma.product.findFirst({
+      where: { slug, ...shopVisible },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
         variants: { orderBy: { sortOrder: "asc" } },
+        poEvent: { select: poEventSelect },
       },
     }),
     getCurrentCustomer(),
@@ -29,6 +34,10 @@ export default async function ProductDetailPage({
 
   if (!product) notFound();
   const soldOut = product.type === "READY" && (product.stockQty ?? 0) <= 0;
+  const event = product.type === "PO" && product.poEvent ? toEventInfo(product.poEvent) : null;
+  const evState = event ? eventState(event) : "open";
+  const blockedLabel =
+    evState === "soon" ? `Opens ${fmtDay(event!.openDate!)}` : evState !== "open" ? "Pre-order closed" : null;
   const prices = product.variants.map((v) => v.price);
   const minPrice = prices.length ? Math.min(...prices) : product.price;
   const maxPrice = prices.length ? Math.max(...prices) : product.price;
@@ -82,12 +91,14 @@ export default async function ProductDetailPage({
             </p>
           </div>
 
-          {product.type === "PO" && (
-            <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-              This product is made/prepared after the order is placed. It needs
-              processing time before shipping.
-            </p>
-          )}
+          {product.type === "PO" &&
+            (event ? (
+              <PoEventHeader event={event} compact />
+            ) : (
+              <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                Pre-Order: we buy it for you after you order, and ship once it arrives.
+              </p>
+            ))}
 
           {product.description && (
             <p className="whitespace-pre-line text-sm text-muted-foreground">
@@ -96,7 +107,8 @@ export default async function ProductDetailPage({
           )}
 
           <AddToCartButton
-            soldOut={soldOut}
+            soldOut={soldOut || Boolean(blockedLabel)}
+            unavailableLabel={blockedLabel ?? undefined}
             variants={product.variants.map((v) => ({
               id: v.id,
               name: v.name,

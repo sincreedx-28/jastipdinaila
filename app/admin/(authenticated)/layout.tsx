@@ -49,6 +49,7 @@ async function requireAdmin() {
 const navItems = [
   { href: "/admin", label: "Ringkasan" },
   { href: "/admin/produk", label: "Produk" },
+  { href: "/admin/po-event", label: "PO Event" },
   { href: "/admin/pesanan", label: "Pesanan" },
   { href: "/admin/banner", label: "Banner" },
   { href: "/admin/pengaturan", label: "Pengaturan", superAdminOnly: true },

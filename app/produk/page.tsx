@@ -5,13 +5,18 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { ProductCard, type ProductCardData } from "@/components/storefront/product-card";
 import { TypeTabs, type ProductTypeFilter } from "@/components/storefront/type-tabs";
+import { PoEventHeader } from "@/components/storefront/po-event-header";
+import { poEventSelect, shopVisible } from "@/lib/shop-visibility";
+import { toEventInfo } from "@/lib/po-event-info";
+import { eventState, type PoEventInfo } from "@/lib/po-event-state";
 
 async function getAllProducts() {
   return prisma.product.findMany({
-    where: { isActive: true },
+    where: shopVisible,
     include: {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },
       variants: { select: { price: true } },
+      poEvent: { select: poEventSelect },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -59,20 +64,25 @@ export default async function ProductsPage({
       ]
     : [];
 
+  // Sold-out Ready items and closed / not-yet-open Pre-Orders.
+  const unavailable = (p: (typeof products)[number]) =>
+    p.type === "READY"
+      ? (p.stockQty ?? 0) <= 0
+      : Boolean(p.poEvent) && eventState(toEventInfo(p.poEvent!)) !== "open";
   let filtered = products;
   // Sold-out Ready items sink to the bottom instead of cluttering the top.
   filtered = [...filtered].sort(
     (a, b) =>
-      Number(a.type === "READY" && (a.stockQty ?? 0) <= 0) -
-      Number(b.type === "READY" && (b.stockQty ?? 0) <= 0)
+      Number(unavailable(a)) - Number(unavailable(b))
   );
   if (activeCategory) filtered = filtered.filter((p) => p.category === activeCategory);
   else if (activeGroup) filtered = filtered.filter((p) => p.group === activeGroup);
 
-  const toCard = (p: (typeof products)[number]) => ({
+  const toCard = (p: (typeof products)[number]): ProductCardData => ({
     slug: p.slug,
     name: p.name,
     type: p.type,
+    poState: p.type === "PO" && p.poEvent ? eventState(toEventInfo(p.poEvent)) : null,
     price: p.price,
     priceMax: Math.max(p.price, ...p.variants.map((v) => v.price)),
     stockQty: p.stockQty,
@@ -149,9 +159,71 @@ export default async function ProductsPage({
           </div>
         )}
 
-        <ProductGrid products={filtered.map(toCard)} />
+        {activeType === "PO" ? (
+          <PoShelf products={filtered} toCard={toCard} />
+        ) : (
+          <ProductGrid products={filtered.map(toCard)} />
+        )}
       </main>
       <SiteFooter />
+    </div>
+  );
+}
+
+const STATE_RANK = { open: 0, soon: 1, closed: 2, archived: 3 } as const;
+
+/** Pre-Order shelf: one section per PO Event (batch), open ones first. */
+function PoShelf<P extends { poEvent: Parameters<typeof toEventInfo>[0] | null }>({
+  products,
+  toCard,
+}: {
+  products: P[];
+  toCard: (p: P) => ProductCardData;
+}) {
+  if (products.length === 0) return <ProductGrid products={[]} />;
+  const groups = new Map<string, { event: PoEventInfo | null; items: P[] }>();
+  for (const p of products) {
+    const ev = p.poEvent ? toEventInfo(p.poEvent) : null;
+    const key = ev?.id ?? "_";
+    if (!groups.has(key)) groups.set(key, { event: ev, items: [] });
+    groups.get(key)!.items.push(p);
+  }
+  const list = [...groups.values()].sort((a, b) => {
+    if (!a.event) return 1;
+    if (!b.event) return -1;
+    return (
+      STATE_RANK[eventState(a.event)] - STATE_RANK[eventState(b.event)] ||
+      (a.event.closeDate ?? "9999").localeCompare(b.event.closeDate ?? "9999")
+    );
+  });
+  return (
+    <div className="space-y-8">
+      {list.length > 1 && (
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+          {list.map((g) => (
+            <a
+              key={g.event?.id ?? "_"}
+              href={`#batch-${g.event?.id ?? "lain"}`}
+              className="flex-none whitespace-nowrap rounded-full border bg-card px-4 py-2 text-sm font-bold"
+            >
+              {g.event?.name ?? "Other Pre-Orders"}
+            </a>
+          ))}
+        </div>
+      )}
+      {list.map((g) => (
+        <section key={g.event?.id ?? "_"} id={`batch-${g.event?.id ?? "lain"}`} className="scroll-mt-24 space-y-1">
+          {g.event ? (
+            <PoEventHeader event={g.event} />
+          ) : (
+            <div className="rounded-2xl border bg-secondary px-4 py-3.5">
+              <h2 className="font-heading text-lg font-bold">Other Pre-Orders</h2>
+              <p className="text-sm text-muted-foreground">Ask the admin for the closing date.</p>
+            </div>
+          )}
+          <ProductGrid products={g.items.map(toCard)} />
+        </section>
+      ))}
     </div>
   );
 }
