@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 // (rajaongkir.com/docs, dev-collaborator.komerce.id) as of this build.
 const BASE_URL = "https://rajaongkir.komerce.id/api/v1";
 const COURIERS = "lion:wahana" as const;
+// Cache key for the rate list. Changed when the request changed (all
+// services instead of only the cheapest, so Lion Parcel's JAGOPACK shows
+// next to REGPACK), so old cached lists aren't reused.
+const RATES_CACHE_KEY = "lion:wahana:all";
 // Starter plan free tier is 100 requests/day; keep a safety margin below it.
 const QUOTA_SAFETY_THRESHOLD = 90;
 const CACHE_TTL_HOURS = 24;
@@ -122,7 +126,7 @@ export async function getShippingRates(
       destinationId_weightBucketGrams_courier: {
         destinationId,
         weightBucketGrams: bucket,
-        courier: COURIERS,
+        courier: RATES_CACHE_KEY,
       },
     },
   });
@@ -140,7 +144,6 @@ export async function getShippingRates(
     destination: destinationId,
     weight: String(bucket),
     courier: COURIERS,
-    price: "lowest",
   });
 
   let res: Response;
@@ -182,21 +185,21 @@ export async function getShippingRates(
       cost: r.cost,
       etd: r.etd,
     })
-  );
+  ).sort((a: ShippingRateOption, b: ShippingRateOption) => a.cost - b.cost);
 
   await prisma.shippingRateCache.upsert({
     where: {
       destinationId_weightBucketGrams_courier: {
         destinationId,
         weightBucketGrams: bucket,
-        courier: COURIERS,
+        courier: RATES_CACHE_KEY,
       },
     },
     create: {
       originId,
       destinationId,
       weightBucketGrams: bucket,
-      courier: COURIERS,
+      courier: RATES_CACHE_KEY,
       responseJson: rates,
       expiresAt: new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000),
     },

@@ -78,13 +78,17 @@ export function CheckoutForm({
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const shippingCost = rate?.cost ?? 0;
 
+  const hasPreOrder = items.some((i) => i.type === "PO");
   useEffect(() => {
     if (hydrated && items.length === 0) {
       router.replace("/keranjang");
+    } else if (hydrated && hasPreOrder) {
+      // Pre-Order can only be ordered through WhatsApp.
+      router.replace("/checkout/wa");
     }
-  }, [hydrated, items.length, router]);
+  }, [hydrated, items.length, hasPreOrder, router]);
 
-  if (!hydrated || items.length === 0) return null;
+  if (!hydrated || items.length === 0 || hasPreOrder) return null;
 
   const canSubmit = Boolean(destination && rate);
   const usingNewAddress = selectedAddressId === NEW_ADDRESS;

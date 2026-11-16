@@ -210,7 +210,10 @@ export function ProductForm({
         />
       </Field>
 
-      <Field label="Berat & ukuran paket" hint=" · untuk hitung ongkir">
+      <Field
+        label="Berat & ukuran paket"
+        hint={type === "READY" ? " · wajib, untuk hitung ongkir" : " · opsional untuk Pre-Order"}
+      >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(
             [
@@ -227,10 +230,10 @@ export function ProductForm({
                 name={name}
                 type="number"
                 inputMode="numeric"
-                min={1}
+                min={type === "READY" ? 1 : 0}
                 aria-label={label}
-                defaultValue={value}
-                required
+                defaultValue={value || undefined}
+                required={type === "READY"}
               />
             </div>
           ))}
