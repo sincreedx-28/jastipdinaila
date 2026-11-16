@@ -58,7 +58,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <Toaster />
+        {/* Top of the screen, short-lived: at the bottom they covered the
+            phone buy bar and the buttons used most during live recording. */}
+        <Toaster position="top-center" duration={2500} />
       </body>
     </html>
   );
