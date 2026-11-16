@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { OutOfStockError, syncProductTotals, takeVariantStock } from "@/lib/product-stock";
 import { getSettings } from "@/lib/settings";
 import type { CartItem } from "@/lib/store/cart";
 import { isWaCode, type WaBuyer, type WaLine } from "@/lib/wa-order";
@@ -69,45 +71,69 @@ export async function checkWaCheckout(cart: CartItem[]): Promise<WaCheckoutCheck
 }
 
 /**
- * Called as the shopper taps "Send order via WhatsApp": keeps a copy of the
- * order (status PENDING) under the code printed in the chat, so the admin
- * can confirm it in Rekap Order with one tap instead of copy-pasting.
- * Tapping twice is harmless: the same code is stored once.
+ * "Ya, pesan sekarang": stores the order (status PENDING) under the code
+ * printed in the WhatsApp chat, and sets aside the stock of its Ready Stock
+ * lines right away, so it can't be sold to someone else while the admin
+ * reads the chat. The admin then confirms it in Rekap Order (or rejects it,
+ * which puts the stock back). Sending twice with the same code is harmless.
  */
 export async function submitWaOrder(
   code: string,
   cart: CartItem[],
   buyer: WaBuyer
-): Promise<{ ok: boolean }> {
-  if (!isWaCode(code)) return { ok: false };
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isWaCode(code)) return { ok: false, error: "Terjadi kesalahan, silakan muat ulang halaman." };
   const name = tidy(buyer.name).slice(0, 80);
   const phone = normPhone(buyer.phone);
   const address = String(buyer.address ?? "").trim().slice(0, 500);
-  if (!name || !validPhone(phone) || !address) return { ok: false };
+  if (!name) return { ok: false, error: "Mohon isi nama penerima." };
+  if (!validPhone(phone)) return { ok: false, error: "Nomor HP/WhatsApp belum sesuai (contoh: 081234567890)." };
+  if (!address) return { ok: false, error: "Mohon isi alamat lengkap." };
 
   if (await prisma.waOrder.findUnique({ where: { code }, select: { id: true } })) return { ok: true };
   // A light brake on abuse of this public form.
   const recent = await prisma.waOrder.count({
     where: { phone, createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } },
   });
-  if (recent >= 15) return { ok: false };
+  if (recent >= 15)
+    return { ok: false, error: "Terlalu banyak pesanan dari nomor ini hari ini. Silakan hubungi admin langsung." };
 
   const check = await checkWaCheckout(cart);
-  if (!check.ok || check.lines.length === 0) return { ok: false };
+  if (!check.ok) return { ok: false, error: check.error };
+  if (check.problems.length) return { ok: false, error: check.problems.join(" ") };
+  if (check.lines.length === 0) return { ok: false, error: "Keranjang masih kosong." };
+
+  const ready = check.lines.filter((l) => l.type === "READY");
   try {
-    await prisma.waOrder.create({
-      data: {
-        code,
-        name,
-        phone,
-        address,
-        note: String(buyer.note ?? "").trim().slice(0, 500) || null,
-        lines: check.lines,
-        total: check.lines.reduce((a, l) => a + l.price * l.qty, 0),
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.waOrder.create({
+        data: {
+          code,
+          name,
+          phone,
+          address,
+          note: String(buyer.note ?? "").trim().slice(0, 500) || null,
+          lines: check.lines,
+          total: check.lines.reduce((a, l) => a + l.price * l.qty, 0),
+          stockTaken: ready.length > 0,
+        },
+      });
+      const touched = new Set<string>();
+      for (const l of ready) {
+        await takeVariantStock(tx, l.variantId!, l.qty).catch(() => {
+          throw new OutOfStockError(`${l.name}${l.variant ? ` (${l.variant})` : ""}`);
+        });
+        touched.add(l.productId!);
+      }
+      for (const id of touched) await syncProductTotals(tx, id);
     });
-  } catch {
-    // Unique code race from a double tap: the first insert already won.
+  } catch (e) {
+    if (e instanceof OutOfStockError)
+      return { ok: false, error: `Maaf, stok ${e.message} baru saja habis. Silakan perbarui keranjang.` };
+    // Same code saved a moment ago (double tap): already done.
+    if (await prisma.waOrder.findUnique({ where: { code }, select: { id: true } })) return { ok: true };
+    throw e;
   }
+  revalidatePath("/produk");
   return { ok: true };
 }

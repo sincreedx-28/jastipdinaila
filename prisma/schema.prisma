@@ -451,6 +451,9 @@ model WaOrder {
   /// [{ productId, variantId, name, variant, qty, price, type, batch, eventId }]
   lines Json
   total Int
+  // True when the Ready Stock lines' stock was set aside the moment the
+  // shopper sent the order (it goes back if the admin rejects it).
+  stockTaken Boolean @default(false)
 
   status      WaOrderStatus @default(PENDING)
   buyerId     String?

@@ -504,12 +504,15 @@ export async function confirmWaOrder(
               })
             : null;
           if (!variant) throw new OutOfStockError(`${l.name} sudah tidak ada di toko`);
-          await takeVariantStock(tx, variant.id, qty).catch(() => {
-            throw new OutOfStockError(
-              `stok ${variant.product.name}${variant.name ? ` (${variant.name})` : ""} tinggal ${variant.stockQty ?? 0}`
-            );
-          });
-          await syncProductTotals(tx, variant.productId);
+          // Newer orders set their stock aside when the shopper sent them.
+          if (!order.stockTaken) {
+            await takeVariantStock(tx, variant.id, qty).catch(() => {
+              throw new OutOfStockError(
+                `stok ${variant.product.name}${variant.name ? ` (${variant.name})` : ""} tinggal ${variant.stockQty ?? 0}`
+              );
+            });
+            await syncProductTotals(tx, variant.productId);
+          }
           await tx.readySale.create({
             data: {
               buyerId: buyer.id,
@@ -544,14 +547,33 @@ export async function confirmWaOrder(
   return { ok: true };
 }
 
-/** "Tolak": the chat never came, or it's a duplicate / test. */
+/**
+ * "Tolak": the chat never came, or it's a duplicate / test. Ready Stock set
+ * aside for it goes back on sale.
+ */
 export async function rejectWaOrder(id: string): Promise<RekapResult> {
   const admin = await requireAdminAction();
-  await prisma.waOrder.updateMany({
-    where: { id, status: "PENDING" },
-    data: { status: "REJECTED", handledBy: admin.name, handledAt: new Date() },
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.waOrder.findUnique({ where: { id } });
+    if (!order) return;
+    const { count } = await tx.waOrder.updateMany({
+      where: { id, status: "PENDING" },
+      data: { status: "REJECTED", handledBy: admin.name, handledAt: new Date() },
+    });
+    if (count === 0 || !order.stockTaken) return;
+    const lines = (Array.isArray(order.lines) ? order.lines : []) as unknown as StoredWaLine[];
+    const touched = new Set<string>();
+    for (const l of lines.filter((x) => x.type === "READY" && x.variantId)) {
+      const v = await tx.productVariant.updateMany({
+        where: { id: l.variantId!, stockQty: { not: null } },
+        data: { stockQty: { increment: Math.max(1, Math.floor(Number(l.qty)) || 1) } },
+      });
+      if (v.count > 0 && l.productId) touched.add(l.productId);
+    }
+    for (const pid of touched) await syncProductTotals(tx, pid);
   });
   done();
+  revalidatePath("/produk");
   revalidatePath("/admin");
   return { ok: true };
 }
