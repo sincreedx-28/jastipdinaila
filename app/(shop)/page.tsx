@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { poEventSelect, shopVisible } from "@/lib/shop-visibility";
+import { toEventInfo } from "@/lib/po-event-info";
+import { eventState } from "@/lib/po-event-state";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
@@ -11,20 +14,21 @@ import { autoBanners, getBanners } from "@/lib/banners";
 async function getHomeProducts() {
   const [featured, groupSource, readyCount, poCount, banners] = await Promise.all([
     prisma.product.findMany({
-      where: { isActive: true },
+      where: shopVisible,
       include: {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },
       variants: { select: { price: true } },
+      poEvent: { select: poEventSelect },
     },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
     prisma.product.findMany({
-      where: { isActive: true },
+      where: shopVisible,
       select: { group: true },
     }),
-    prisma.product.count({ where: { isActive: true, type: "READY" } }),
-    prisma.product.count({ where: { isActive: true, type: "PO" } }),
+    prisma.product.count({ where: { ...shopVisible, type: "READY" } }),
+    prisma.product.count({ where: { ...shopVisible, type: "PO" } }),
     getBanners(),
   ]);
   return { featured, groupSource, readyCount, poCount, banners };
@@ -102,6 +106,7 @@ export default async function Home() {
                     slug: p.slug,
                     name: p.name,
                     type: p.type,
+                    poState: p.type === "PO" && p.poEvent ? eventState(toEventInfo(p.poEvent)) : null,
                     price: p.price,
                     priceMax: Math.max(p.price, ...p.variants.map((v) => v.price)),
                     stockQty: p.stockQty,

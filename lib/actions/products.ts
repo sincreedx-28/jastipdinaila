@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ProductType } from "@/lib/generated/prisma/enums";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { syncProductTotals } from "@/lib/product-stock";
+import { copyProduct } from "@/lib/product-copy";
 import type { VariantInput } from "@/lib/variant-types";
 
 const PRODUCT_IMAGE_BUCKET = "product-images";
@@ -341,64 +342,10 @@ export async function updateProduct(
  */
 export async function duplicateProduct(productId: string) {
   await requireAdminAction();
-  const source = await prisma.product.findUnique({
-    where: { id: productId },
-    include: {
-      variants: { orderBy: { sortOrder: "asc" } },
-      images: { orderBy: { sortOrder: "asc" } },
-    },
-  });
+  const source = await prisma.product.findUnique({ where: { id: productId }, select: { name: true } });
   if (!source) return;
-
-  const name = `${source.name} (Salinan)`;
-  const copy = await prisma.$transaction(async (tx) => {
-    const created = await tx.product.create({
-      data: {
-        slug: slugify(name),
-        name,
-        description: source.description,
-        type: source.type,
-        price: source.price,
-        weightGrams: source.weightGrams,
-        lengthCm: source.lengthCm,
-        widthCm: source.widthCm,
-        heightCm: source.heightCm,
-        group: source.group,
-        category: source.category,
-        poEventId: source.poEventId,
-        legacyVariants: source.legacyVariants,
-        isActive: false,
-        variants: {
-          create: source.variants.map((v) => ({
-            name: v.name,
-            sortOrder: v.sortOrder,
-            price: v.price,
-            stockQty: source.type === "READY" ? 0 : null,
-          })),
-        },
-      },
-    });
-    await syncProductTotals(tx, created.id);
-    return created;
-  });
-
-  // Photos are copied as separate files, so deleting a photo from one product
-  // never removes it from the other.
-  if (source.images.length > 0) {
-    const supabase = await createClient();
-    const images: { productId: string; url: string; sortOrder: number }[] = [];
-    for (const [i, img] of source.images.entries()) {
-      const from = img.url.split(`${PRODUCT_IMAGE_BUCKET}/`)[1];
-      if (!from) continue;
-      const to = `${copy.id}/${Date.now()}-${i}.${from.split(".").pop() || "jpg"}`;
-      const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).copy(from, to);
-      if (error) continue;
-      const { data } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(to);
-      images.push({ productId: copy.id, url: data.publicUrl, sortOrder: i });
-    }
-    if (images.length > 0) await prisma.productImage.createMany({ data: images });
-  }
-
+  const copy = await copyProduct(productId, { name: `${source.name} (Salinan)`, isActive: false });
+  if (!copy) return;
   revalidateProductPages();
   redirect(`/admin/produk/${copy.id}?baru=salinan`);
 }

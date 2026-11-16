@@ -8,6 +8,8 @@ export type ProductCardData = {
   slug: string;
   name: string;
   type: "READY" | "PO";
+  /** For Pre-Order: state of its batch; closed / not-yet-open can't be ordered. */
+  poState?: "open" | "soon" | "closed" | "archived" | null;
   price: number;
   /** Highest variant price, when variants are priced differently. */
   priceMax?: number | null;
@@ -18,6 +20,12 @@ export type ProductCardData = {
 
 export function ProductCard({ product }: { product: ProductCardData }) {
   const soldOut = product.type === "READY" && (product.stockQty ?? 0) <= 0;
+  const poBlocked =
+    product.poState === "closed" || product.poState === "archived"
+      ? "Pre-order closed"
+      : product.poState === "soon"
+        ? "Opening soon"
+        : null;
 
   return (
     <Link href={`/produk/${product.slug}`}>
@@ -41,10 +49,10 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               Pre-Order
             </span>
           )}
-          {soldOut && (
+          {(soldOut || poBlocked) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70">
               <span className="rounded-full bg-card px-3 py-1 text-xs font-extrabold text-foreground">
-                Out of Stock
+                {soldOut ? "Out of Stock" : poBlocked}
               </span>
             </div>
           )}

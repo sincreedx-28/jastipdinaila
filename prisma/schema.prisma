@@ -328,6 +328,16 @@ model PoEvent {
   status    PoEventStatus @default(OPEN)
   createdAt DateTime      @default(now())
 
+  // Shown to shoppers at the top of the batch on the Pre-Order shelf.
+  // Dates are calendar days in Jakarta time; all optional.
+  place     String?
+  openDate  DateTime? @db.Date
+  closeDate DateTime? @db.Date
+  etaDate   DateTime? @db.Date
+  // Free text when there's no exact date, e.g. "akhir Desember".
+  etaNote   String?
+  note      String?
+
   items    PoItem[]
   orders   PoOrder[]
   products Product[]

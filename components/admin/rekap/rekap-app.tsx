@@ -171,6 +171,7 @@ export function RekapApp({ data }: { data: RekapData }) {
           </label>
           <p className="text-sm text-muted-foreground">
             Satu PO Event = satu trip/batch belanja. Semua order dari live itu dicatat di sini.
+            Tanggal close, estimasi ready, dan tempat bisa dilengkapi di menu <b>PO Event</b>.
           </p>
           <div className="flex gap-2">
             <Button type="button" onClick={createEvent} disabled={pending}>
