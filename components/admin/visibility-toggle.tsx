@@ -9,7 +9,7 @@ export function VisibilityToggle({ productId, isActive }: { productId: string; i
   const [shown, setShown] = useOptimistic(isActive);
 
   return (
-    <label className="flex min-h-10 cursor-pointer items-center gap-2 pr-1 text-sm font-semibold">
+    <label className="flex min-h-10 cursor-pointer items-center gap-1.5 pr-0.5 text-sm font-semibold">
       <input
         type="checkbox"
         className="h-5 w-5"

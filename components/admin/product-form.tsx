@@ -11,6 +11,7 @@ import type { ProductFormState } from "@/lib/actions/products";
 import { deleteProductImage } from "@/lib/actions/products";
 import { VariantEditor } from "@/components/admin/variant-editor";
 import type { VariantRowValue } from "@/lib/variant-types";
+import { compressFileInput } from "@/lib/compress-image";
 
 type ExistingImage = { id: string; url: string };
 
@@ -24,8 +25,11 @@ type ProductFormValues = {
   heightCm: number;
   group?: string | null;
   category?: string | null;
+  poEventId?: string | null;
   variants?: VariantRowValue[];
 };
+
+export type PoEventOption = { id: string; name: string; archived: boolean };
 
 function Field({
   label,
@@ -56,6 +60,7 @@ export function ProductForm({
   existingImages,
   submitLabel,
   isOwner,
+  poEvents,
 }: {
   action: (state: ProductFormState, formData: FormData) => Promise<ProductFormState>;
   defaultValues?: ProductFormValues;
@@ -65,10 +70,13 @@ export function ProductForm({
   submitLabel: string;
   /** Owner (super admin) also sees and enters purchase prices. */
   isOwner: boolean;
+  /** PO Events (batches) a Pre-Order product can belong to. */
+  poEvents: PoEventOption[];
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [type, setType] = useState<"READY" | "PO">(defaultValues?.type ?? "READY");
   const [images, setImages] = useState(existingImages ?? []);
+  const [shrinking, setShrinking] = useState(false);
 
   return (
     <form action={formAction} className="max-w-2xl space-y-5">
@@ -124,6 +132,30 @@ export function ProductForm({
         </div>
       </fieldset>
 
+      {type === "PO" && (
+        <Field label="Batch PO" htmlFor="poEventId">
+          <select
+            id="poEventId"
+            name="poEventId"
+            defaultValue={defaultValues?.poEventId ?? poEvents.find((e) => !e.archived)?.id ?? ""}
+            className="h-11 w-full rounded-xl border bg-background px-3 text-base"
+          >
+            <option value="">Belum masuk batch mana pun</option>
+            {poEvents.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+                {e.archived ? " (arsip)" : ""}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {poEvents.length
+              ? "Produk ini akan muncul sebagai pilihan saat mencatat order batch tersebut di Rekap Order."
+              : "Belum ada batch. Buat dulu di menu Rekap Order → + PO Event baru."}
+          </p>
+        </Field>
+      )}
+
       <VariantEditor type={type} isOwner={isOwner} initial={defaultValues?.variants} />
 
       <Field label="Foto produk">
@@ -158,7 +190,14 @@ export function ProductForm({
             multiple
             aria-label={images.length > 0 ? "Tambah foto" : "Upload foto"}
             className="w-auto max-w-full"
+            onChange={async (e) => {
+              const input = e.currentTarget;
+              setShrinking(true);
+              await compressFileInput(input);
+              setShrinking(false);
+            }}
           />
+          {shrinking && <span className="text-sm text-muted-foreground">Mengecilkan foto…</span>}
         </div>
       </Field>
 
@@ -201,7 +240,7 @@ export function ProductForm({
       {state?.error && <p className="soft-note text-destructive!">{state.error}</p>}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || shrinking}>
           {pending ? "Menyimpan..." : submitLabel}
         </Button>
         <Button variant="outline" render={<Link href="/admin/produk">Batal</Link>} />

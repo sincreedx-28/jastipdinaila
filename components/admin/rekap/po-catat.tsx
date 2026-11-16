@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addPoOrder, changePoOrderQty, deletePoOrder } from "@/lib/actions/rekap";
-import { itemKey, rp, tidy, type ItemRow } from "@/lib/rekap";
+import { itemKey, productItemKey, rp, tidy, type ItemRow } from "@/lib/rekap";
+import { ItemPicker, Thumb, type PickedItem } from "./item-picker";
 import { BuyerPicker } from "./buyer-picker";
 import { Stepper, useRekapAction, type Buyer } from "./shared";
 import type { RekapData } from "./rekap-app";
@@ -32,61 +33,69 @@ export function PoCatat({
   rows: ItemRow[];
 }) {
   const [buyer, setBuyer] = useState<Buyer | null>(null);
-  const [name, setName] = useState("");
+  const [item, setItem] = useState<PickedItem | null>(null);
   const [variant, setVariant] = useState("");
+  const [otherVariant, setOtherVariant] = useState(false);
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState("");
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
+  // Bumped after each save to give the item field a fresh, empty start.
+  const [pickerKey, setPickerKey] = useState(0);
+  const itemRef = useRef<HTMLInputElement>(null);
   const { pending, run } = useRekapAction();
 
   const itemsById = useMemo(() => new Map(data.items.map((i) => [i.id, i])), [data.items]);
   const byKey = useMemo(() => new Map(rows.map((r) => [r.key, r])), [rows]);
 
-  // Suggestions: items already in this event first, then catalog products.
-  const nameOptions = useMemo(
-    () => [...new Set([...data.items.map((i) => i.name), ...data.catalog.map((p) => p.name)])],
-    [data.items, data.catalog]
-  );
-  const product = data.catalog.find((p) => p.name.toLowerCase() === tidy(name).toLowerCase());
-  const variantOptions = useMemo(() => {
-    const k = itemKey(name, "").split("|")[0];
-    return [
-      ...new Set([
-        ...(product?.variants.map((v) => v.name) ?? []),
-        ...data.items.filter((i) => i.key.split("|")[0] === k && i.variant).map((i) => i.variant),
-      ]),
-    ];
-  }, [name, product, data.items]);
-
-  const existing = name.trim() ? byKey.get(itemKey(name, variant)) : undefined;
-  const webPrice = product
-    ? (product.variants.find((v) => v.name.toLowerCase() === tidy(variant).toLowerCase())?.price ??
-      product.price)
+  const key = item
+    ? item.productId
+      ? productItemKey(item.productId, variant)
+      : itemKey(item.name, variant)
+    : "";
+  const existing = key ? byKey.get(key) : undefined;
+  const catalogPrice = item
+    ? (item.variants.find((v) => v.name.toLowerCase() === tidy(variant).toLowerCase())?.price ?? item.price)
     : 0;
-  const suggested = existing && existing.price > 0 ? existing.price : webPrice;
-  const hint = !name.trim()
+  const suggested = existing && existing.price > 0 ? existing.price : catalogPrice;
+  const hint = !item
     ? ""
     : existing
       ? `Sudah ada di rekap: ${existing.need} pcs dipesan${existing.price ? ` · harga ${rp(existing.price)}` : ""}`
-      : webPrice
-        ? `Harga dari web ${rp(webPrice)}, kosongkan kolom harga untuk memakainya`
+      : catalogPrice
+        ? `Harga dari katalog ${rp(catalogPrice)}, kosongkan kolom harga untuk memakainya`
         : "Barang baru di PO Event ini";
+
+  const pickItem = (v: PickedItem | null) => {
+    setItem(v);
+    setVariant("");
+    setOtherVariant(false);
+    setPrice("");
+  };
 
   const save = () => {
     if (!buyer) return run(async () => ({ ok: false as const, error: "Pilih customer dulu." }));
-    if (!name.trim()) return run(async () => ({ ok: false as const, error: "Isi nama barang." }));
+    if (!item) return run(async () => ({ ok: false as const, error: "Pilih atau ketik barang dulu." }));
+    if (item.variants.length && !otherVariant && !variant)
+      return run(async () => ({ ok: false as const, error: "Pilih variannya dulu." }));
     const p = Number(price.replace(/\D/g, "")) || suggested || 0;
     run(
-      () => addPoOrder({ eventId: data.eventId!, buyerId: buyer.id, name, variant, qty, price: p }),
+      () =>
+        addPoOrder({
+          eventId: data.eventId!,
+          buyerId: buyer.id,
+          productId: item.productId,
+          name: item.name,
+          variant,
+          qty,
+          price: p,
+        }),
       {
-        success: `Tersimpan: ${buyer.name} · ${tidy(name)}${variant ? ` (${tidy(variant)})` : ""} x${qty}`,
+        success: `Tersimpan: ${buyer.name} · ${item.name}${variant ? ` (${tidy(variant)})` : ""} x${qty}`,
         onOk: () => {
-          setName("");
-          setVariant("");
+          pickItem(null);
+          setPickerKey((k) => k + 1);
           setQty(1);
-          setPrice("");
-          nameRef.current?.focus();
+          setTimeout(() => itemRef.current?.focus());
         },
       }
     );
@@ -111,46 +120,71 @@ export function PoCatat({
             value={buyer}
             onChange={(b) => {
               setBuyer(b);
-              if (b) setTimeout(() => nameRef.current?.focus());
+              if (b && !item) setTimeout(() => itemRef.current?.focus());
             }}
           />
         </div>
 
-        <label className="block space-y-1.5">
+        <div className="space-y-1.5">
           <span className="text-sm font-semibold">Barang</span>
-          <Input
-            ref={nameRef}
-            list="rekap-names"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ketik atau pilih barang"
+          <ItemPicker
+            key={pickerKey}
+            catalog={data.catalog}
+            items={data.items}
+            value={item}
+            onChange={pickItem}
+            inputRef={itemRef}
           />
-          <datalist id="rekap-names">
-            {nameOptions.map((n) => (
-              <option key={n} value={n} />
-            ))}
-          </datalist>
-        </label>
+        </div>
 
-        <div className="grid grid-cols-[1fr_auto] gap-3">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-semibold">Varian (opsional)</span>
-            <Input
-              list="rekap-variants"
-              value={variant}
-              onChange={(e) => setVariant(e.target.value)}
-              placeholder="Size / shade / warna"
-            />
-            <datalist id="rekap-variants">
-              {variantOptions.map((v) => (
-                <option key={v} value={v} />
-              ))}
-            </datalist>
-          </label>
+        {item && (
           <div className="space-y-1.5">
-            <span className="text-sm font-semibold">Jumlah</span>
-            <Stepper value={qty} label="jumlah" onChange={(d) => setQty((q) => Math.max(1, q + d))} />
+            <span className="text-sm font-semibold">
+              Varian{item.variants.length ? "" : " (opsional)"}
+            </span>
+            {item.variants.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {item.variants.map((v) => (
+                  <button
+                    key={v.name}
+                    type="button"
+                    className="pill"
+                    data-active={!otherVariant && variant === v.name}
+                    onClick={() => {
+                      setOtherVariant(false);
+                      setVariant(v.name);
+                    }}
+                  >
+                    {v.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="pill"
+                  data-active={otherVariant}
+                  onClick={() => {
+                    setOtherVariant(true);
+                    setVariant("");
+                  }}
+                >
+                  Lainnya…
+                </button>
+              </div>
+            )}
+            {(item.variants.length === 0 || otherVariant) && (
+              <Input
+                value={variant}
+                onChange={(e) => setVariant(e.target.value)}
+                placeholder="Size / shade / warna"
+                aria-label="Varian"
+              />
+            )}
           </div>
+        )}
+
+        <div className="space-y-1.5">
+          <span className="text-sm font-semibold">Jumlah</span>
+          <Stepper value={qty} label="jumlah" onChange={(d) => setQty((q) => Math.max(1, q + d))} />
         </div>
 
         <label className="block space-y-1.5">
@@ -185,7 +219,8 @@ export function PoCatat({
               const it = itemsById.get(o.itemId);
               return (
                 <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-                  <div className="min-w-0 flex-1 basis-48">
+                  <Thumb src={it?.image} name={it?.name ?? "?"} />
+                  <div className="min-w-0 flex-1 basis-40">
                     <b>{buyersById.get(o.buyerId)?.name ?? "?"}</b>
                     {" · "}
                     {it?.name}

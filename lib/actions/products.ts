@@ -128,6 +128,8 @@ function parseProductFields(formData: FormData) {
     throw new Error("Dimensi (panjang/lebar/tinggi) tidak valid.");
 
   const variants = parseVariants(formData, type);
+  const poEventId =
+    type === "PO" ? String(formData.get("poEventId") ?? "").trim() || null : null;
 
   return {
     fields: {
@@ -140,6 +142,7 @@ function parseProductFields(formData: FormData) {
       heightCm: Math.round(heightCm),
       group,
       category,
+      poEventId,
       // Mirrored into the legacy column so older code reading it still shows
       // the option labels.
       legacyVariants: variants.map((v) => v.name).filter(Boolean),
@@ -181,6 +184,12 @@ async function recordInitialStock(
   });
 }
 
+async function assertPoEvent(id: string | null) {
+  if (id && !(await prisma.poEvent.findUnique({ where: { id }, select: { id: true } }))) {
+    throw new Error("Batch PO tidak ditemukan, pilih ulang.");
+  }
+}
+
 function revalidateProductPages(productId?: string) {
   revalidatePath("/admin/produk");
   if (productId) revalidatePath(`/admin/produk/${productId}`);
@@ -195,6 +204,7 @@ export async function createProduct(
   const admin = await requireAdminAction();
   try {
     const { fields, variants } = parseProductFields(formData);
+    await assertPoEvent(fields.poEventId);
     const slug = slugify(fields.name);
 
     const product = await prisma.$transaction(async (tx) => {
@@ -240,6 +250,7 @@ export async function updateProduct(
   const admin = await requireAdminAction();
   try {
     const { fields, variants } = parseProductFields(formData);
+    await assertPoEvent(fields.poEventId);
 
     await prisma.$transaction(async (tx) => {
       const existing = await tx.productVariant.findMany({ where: { productId } });
@@ -341,6 +352,7 @@ export async function duplicateProduct(productId: string) {
         heightCm: source.heightCm,
         group: source.group,
         category: source.category,
+        poEventId: source.poEventId,
         legacyVariants: source.legacyVariants,
         isActive: false,
         variants: {

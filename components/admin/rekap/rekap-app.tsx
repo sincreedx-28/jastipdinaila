@@ -13,7 +13,16 @@ import { PoPembeli } from "./po-pembeli";
 import { CustomerTab } from "./customer-tab";
 import { ReadyMode } from "./ready-mode";
 
-export type CatalogEntry = { name: string; price: number; variants: { name: string; price: number }[] };
+export type CatalogEntry = {
+  id: string;
+  name: string;
+  type: "READY" | "PO";
+  /** Belongs to the PO Event being recorded. */
+  inEvent: boolean;
+  image: string | null;
+  price: number;
+  variants: { name: string; price: number }[];
+};
 export type ReadyProduct = {
   id: string;
   name: string;

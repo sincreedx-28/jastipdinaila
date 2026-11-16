@@ -44,6 +44,7 @@ export default async function AdminProductsPage({
       where,
       include: {
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
+        poEvent: { select: { name: true } },
         variants: {
           select: { name: true, price: true, stockQty: true },
           orderBy: { sortOrder: "asc" },
@@ -201,6 +202,7 @@ export default async function AdminProductsPage({
                       </Link>
                       <p className="text-sm text-muted-foreground">
                         {p.type === "READY" ? "Ready" : "PO"}
+                        {p.poEvent && ` · ${p.poEvent.name}`}
                         {p.category && ` · ${p.category}`}
                         {p.type === "READY" && (
                           <span

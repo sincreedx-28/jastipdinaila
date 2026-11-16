@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAction } from "@/lib/admin-auth";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { OutOfStockError, syncProductTotals, takeVariantStock } from "@/lib/product-stock";
-import { fmtPhone, itemKey, nameKey, normPhone, tidy, validPhone } from "@/lib/rekap";
+import { fmtPhone, itemKey, nameKey, normPhone, productItemKey, tidy, validPhone } from "@/lib/rekap";
+import { createClient } from "@/lib/supabase/server";
+import { sniffImageType } from "@/lib/image-sniff";
 
 export type RekapResult<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -115,13 +117,15 @@ export async function importBuyers(
 export async function addPoOrder(input: {
   eventId: string;
   buyerId: string;
+  /** Picked from the catalog; null/undefined for a hand-typed item. */
+  productId?: string | null;
   name: string;
   variant: string;
   qty: number;
   price: number;
 }): Promise<RekapResult> {
   const admin = await requireAdminAction();
-  const name = tidy(input.name).slice(0, 120);
+  let name = tidy(input.name).slice(0, 120);
   const variant = tidy(input.variant).slice(0, 60);
   const qty = int(input.qty);
   const price = Math.max(0, int(input.price) || 0);
@@ -135,11 +139,17 @@ export async function addPoOrder(input: {
   if (!event) return fail("PO Event tidak ditemukan.");
   if (!buyer) return fail("Pilih customer dulu.");
 
-  const key = itemKey(name, variant);
-  const product = await prisma.product.findFirst({
-    where: { name: { equals: name, mode: "insensitive" } },
-    select: { id: true },
-  });
+  // A catalog product (picked, or typed with its exact name) is always the
+  // same SKU; anything else is keyed by its name.
+  const product = input.productId
+    ? await prisma.product.findUnique({ where: { id: input.productId }, select: { id: true, name: true } })
+    : await prisma.product.findFirst({
+        where: { name: { equals: name, mode: "insensitive" } },
+        select: { id: true, name: true },
+      });
+  if (input.productId && !product) return fail("Produk tidak ditemukan, pilih ulang.");
+  if (product) name = product.name;
+  const key = product ? productItemKey(product.id, variant) : itemKey(name, variant);
 
   await prisma.$transaction(async (tx) => {
     let item = await tx.poItem.findUnique({ where: { eventId_key: { eventId: event.id, key } } });
@@ -229,6 +239,31 @@ export async function setItemCost(itemId: string, cost: number | null): Promise<
 export async function setItemSoldOut(itemId: string, soldOut: boolean): Promise<RekapResult> {
   await requireAdminAction();
   await prisma.poItem.update({ where: { id: itemId }, data: { soldOut: Boolean(soldOut) } });
+  done();
+  return { ok: true };
+}
+
+/** Photo for a hand-typed item, so buyers and admins recognise it. */
+export async function uploadItemPhoto(itemId: string, formData: FormData): Promise<RekapResult> {
+  await requireAdminAction();
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return fail("Pilih foto dulu.");
+  if (file.size > 3 * 1024 * 1024) return fail("Foto terlalu besar (maks 3MB).");
+  const item = await prisma.poItem.findUnique({ where: { id: itemId }, select: { id: true, eventId: true } });
+  if (!item) return fail("Barang tidak ditemukan.");
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffImageType(bytes);
+  if (!type) return fail("File harus foto (JPEG, PNG, WebP, atau GIF).");
+
+  const supabase = await createClient();
+  const path = `rekap/${item.eventId}/${item.id}-${Date.now()}.${type.ext}`;
+  const { error } = await supabase.storage
+    .from("product-images")
+    .upload(path, bytes, { upsert: false, contentType: type.mime });
+  if (error) return fail(`Gagal upload foto: ${error.message}`);
+  const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+  await prisma.poItem.update({ where: { id: itemId }, data: { imageUrl: data.publicUrl } });
   done();
   return { ok: true };
 }

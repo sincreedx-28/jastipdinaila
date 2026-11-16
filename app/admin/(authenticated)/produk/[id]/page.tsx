@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/admin-auth";
+import { listPoEventOptions } from "@/lib/po-events";
 import { ProductForm } from "@/components/admin/product-form";
 import { StockPanel } from "@/components/admin/stock-panel";
 import { updateProduct } from "@/lib/actions/products";
@@ -13,7 +14,12 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ baru?: string }>;
 }) {
-  const [{ id }, { baru }, admin] = await Promise.all([params, searchParams, getCurrentAdmin()]);
+  const [{ id }, { baru }, admin, poEvents] = await Promise.all([
+    params,
+    searchParams,
+    getCurrentAdmin(),
+    listPoEventOptions(),
+  ]);
   const isOwner = Boolean(admin?.isSuperAdmin);
 
   const product = await prisma.product.findUnique({
@@ -56,6 +62,7 @@ export default async function EditProductPage({
         submitLabel="Simpan perubahan"
         existingImages={product.images}
         isOwner={isOwner}
+        poEvents={poEvents}
         defaultValues={{
           name: product.name,
           description: product.description,
@@ -66,6 +73,7 @@ export default async function EditProductPage({
           heightCm: product.heightCm,
           group: product.group,
           category: product.category,
+          poEventId: product.poEventId,
           variants: product.variants.map((v) => ({
             id: v.id,
             name: v.name,
