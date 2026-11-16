@@ -11,11 +11,15 @@ export type WaLine = {
   type: "READY" | "PO";
   /** PO batch name, if the product belongs to one. */
   batch: string | null;
+  productId?: string;
+  variantId?: string;
+  /** PO batch id, used when the admin confirms the order. */
+  eventId?: string | null;
 };
 
 export type WaBuyer = { name: string; phone: string; address: string; note: string };
 
-export function buildWaMessage(lines: WaLine[], buyer: WaBuyer) {
+export function buildWaMessage(lines: WaLine[], buyer: WaBuyer, code?: string) {
   const out: string[] = ["Halo jastipdinaila, saya mau order:"];
   const row = (l: WaLine, i: number) =>
     `${i + 1}. ${l.name}${l.variant ? ` (Varian: ${l.variant})` : ""} x${l.qty} = ${rp(l.price * l.qty)}`;
@@ -42,6 +46,7 @@ export function buildWaMessage(lines: WaLine[], buyer: WaBuyer) {
     `Alamat: ${buyer.address.trim()}`
   );
   if (buyer.note.trim()) out.push(`Catatan: ${buyer.note.trim()}`);
+  if (code) out.push("", `Kode pesanan: ${code}`);
   return out.join("\n");
 }
 
@@ -101,3 +106,15 @@ export function parseWaMessage(text: string): ParsedWaOrder {
   }
   return res;
 }
+
+/** Short, unambiguous order code, e.g. "W-7K3QF" (no 0/O/1/I). */
+export function newWaCode() {
+  const abc = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let c = "W-";
+  const rnd = new Uint32Array(5);
+  crypto.getRandomValues(rnd);
+  for (const n of rnd) c += abc[n % abc.length];
+  return c;
+}
+
+export const isWaCode = (c: string) => /^W-[2-9A-HJ-NP-Z]{5}$/.test(c);

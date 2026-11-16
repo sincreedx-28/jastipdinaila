@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCartStore } from "@/lib/store/cart";
-import { checkWaCheckout, type WaCheckoutCheck } from "@/lib/actions/wa-checkout";
-import { buildWaMessage, type WaBuyer, type WaLine } from "@/lib/wa-order";
+import { checkWaCheckout, submitWaOrder, type WaCheckoutCheck } from "@/lib/actions/wa-checkout";
+import { buildWaMessage, newWaCode, type WaBuyer, type WaLine } from "@/lib/wa-order";
+import type { CartItem } from "@/lib/store/cart";
 import { rp } from "@/lib/rekap";
 
 const BUYER_KEY = "jastip-wa-buyer";
@@ -59,6 +60,21 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
     typeof window === "undefined" ? { name: defaultName, phone: "", address: "", note: "" } : loadBuyer(defaultName)
   );
   const [sent, setSent] = useState(false);
+  // Printed in the chat and stored with the order, so the admin can match
+  // the WhatsApp message to the order waiting in Rekap Order.
+  const [code] = useState(newWaCode);
+  const [submitted, setSubmitted] = useState<{ cart: CartItem[]; buyer: WaBuyer } | null>(null);
+
+  // Saving is fire-and-forget while WhatsApp opens; it's retried (same code,
+  // so stored once) whenever this page is visible again, to be sure it lands.
+  useEffect(() => {
+    if (!submitted) return;
+    const send = () => submitWaOrder(code, submitted.cart, submitted.buyer).catch(() => {});
+    send();
+    const onVisible = () => document.visibilityState === "visible" && send();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [submitted, code]);
 
   const cartKey = JSON.stringify(items.map((i) => [i.productId, i.variantId, i.variant, i.qty]));
   useEffect(() => {
@@ -80,7 +96,7 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
   };
 
   const lines = useMemo(() => (check?.ok ? check.lines : []), [check]);
-  const message = useMemo(() => buildWaMessage(lines, buyer), [lines, buyer]);
+  const message = useMemo(() => buildWaMessage(lines, buyer, code), [lines, buyer, code]);
   const ready = buyer.name.trim() && buyer.phone.trim() && buyer.address.trim() && lines.length > 0;
   const href = check?.ok ? `https://wa.me/${check.waNumber}?text=${encodeURIComponent(message)}` : "#";
   const total = lines.reduce((a, l) => a + l.price * l.qty, 0);
@@ -89,9 +105,12 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
     return (
       <main className="mx-auto w-full max-w-xl flex-1 px-4 py-14 text-center">
         <h1 className="mb-2 font-heading text-2xl font-bold">Thank you! 🎀</h1>
-        <p className="mb-6 text-muted-foreground">
+        <p className="mb-2 text-muted-foreground">
           Your order was opened in WhatsApp. Make sure the chat is sent; the admin will reply with
           the shipping cost and payment details.
+        </p>
+        <p className="mb-6 text-sm">
+          Order code: <b>{code}</b>
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button render={<a href={href} target="_blank" rel="noopener noreferrer">Open WhatsApp again</a>} />
@@ -203,6 +222,7 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
               rel="noopener noreferrer"
               onClick={() => {
                 if (!ready) return;
+                setSubmitted({ cart: items, buyer });
                 setSent(true);
                 clear();
               }}

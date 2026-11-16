@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { RekapApp, type RekapData } from "@/components/admin/rekap/rekap-app";
+import type { WebOrder } from "@/components/admin/rekap/web-orders";
 
 type Search = { mode?: string; event?: string; bulan?: string };
 
@@ -22,9 +23,10 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
   const isOwner = Boolean(admin?.isSuperAdmin);
   const mode = sp.mode === "ready" ? "ready" : "po";
 
-  const [events, buyers] = await Promise.all([
+  const [events, buyers, waOrders] = await Promise.all([
     prisma.poEvent.findMany({ orderBy: [{ status: "asc" }, { createdAt: "desc" }] }),
     prisma.buyer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, phone: true } }),
+    prisma.waOrder.findMany({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" }, take: 100 }),
   ]);
 
   const data: RekapData = {
@@ -40,6 +42,17 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
     sales: [],
     month: jakartaMonth(),
     months: [],
+    webOrders: waOrders.map((o) => ({
+      id: o.id,
+      code: o.code,
+      name: o.name,
+      phone: o.phone,
+      address: o.address,
+      note: o.note,
+      total: o.total,
+      createdAt: o.createdAt.toISOString(),
+      lines: (Array.isArray(o.lines) ? o.lines : []) as WebOrder["lines"],
+    })),
   };
 
   if (mode === "po") {
