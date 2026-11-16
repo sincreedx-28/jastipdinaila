@@ -110,9 +110,10 @@ export function WebOrders({ orders, eventId }: { orders: WebOrder[]; eventId: st
         </span>
       </summary>
       <p className="mt-1 text-sm text-muted-foreground">
-        Cocokkan kode dengan chat WhatsApp yang masuk. <b>Konfirmasi</b> kalau chat-nya benar ada:
-        barang PO masuk ke daftar belanja batch-nya, barang Ready langsung memotong stok.
-        <b> Tolak</b> kalau chat-nya tidak pernah datang.
+        Cocokkan kode dengan chat WhatsApp yang masuk. Stok barang Ready di pesanan ini sudah
+        disisihkan sejak pembeli menekan tombol. <b>Konfirmasi</b> kalau chat-nya benar ada: barang
+        PO masuk ke daftar belanja batch-nya dan barang Ready tercatat sebagai penjualan.
+        <b> Tolak</b> kalau chat-nya tidak pernah datang: stok Ready dikembalikan.
       </p>
       <ul className="mt-3 space-y-2">
         {orders.map((o) => (

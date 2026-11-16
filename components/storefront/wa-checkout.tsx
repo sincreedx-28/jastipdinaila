@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCartStore } from "@/lib/store/cart";
 import { checkWaCheckout, submitWaOrder, type WaCheckoutCheck } from "@/lib/actions/wa-checkout";
 import { buildWaMessage, newWaCode, type WaBuyer, type WaLine } from "@/lib/wa-order";
-import type { CartItem } from "@/lib/store/cart";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { rp } from "@/lib/rekap";
 
 const BUYER_KEY = "jastip-wa-buyer";
@@ -63,18 +70,9 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
   // Printed in the chat and stored with the order, so the admin can match
   // the WhatsApp message to the order waiting in Rekap Order.
   const [code] = useState(newWaCode);
-  const [submitted, setSubmitted] = useState<{ cart: CartItem[]; buyer: WaBuyer } | null>(null);
-
-  // Saving is fire-and-forget while WhatsApp opens; it's retried (same code,
-  // so stored once) whenever this page is visible again, to be sure it lands.
-  useEffect(() => {
-    if (!submitted) return;
-    const send = () => submitWaOrder(code, submitted.cart, submitted.buyer).catch(() => {});
-    send();
-    const onVisible = () => document.visibilityState === "visible" && send();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [submitted, code]);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, startSaving] = useTransition();
 
   const cartKey = JSON.stringify(items.map((i) => [i.productId, i.variantId, i.variant, i.qty]));
   useEffect(() => {
@@ -100,21 +98,29 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
   const ready = buyer.name.trim() && buyer.phone.trim() && buyer.address.trim() && lines.length > 0;
   const href = check?.ok ? `https://wa.me/${check.waNumber}?text=${encodeURIComponent(message)}` : "#";
   const total = lines.reduce((a, l) => a + l.price * l.qty, 0);
+  const hasReady = lines.some((l) => l.type === "READY");
 
   if (sent) {
     return (
-      <main className="mx-auto w-full max-w-xl flex-1 px-4 py-14 text-center">
-        <h1 className="mb-2 font-heading text-2xl font-bold">Thank you! 🎀</h1>
-        <p className="mb-2 text-muted-foreground">
-          Your order was opened in WhatsApp. Make sure the chat is sent; the admin will reply with
-          the shipping cost and payment details.
+      <main className="mx-auto w-full max-w-xl flex-1 px-4 py-12 text-center">
+        <h1 className="mb-2 font-heading text-2xl font-bold">Pesanan Kakak sudah tercatat 🎀</h1>
+        <p className="mb-1 text-sm">
+          Kode pesanan: <b>{code}</b>
         </p>
-        <p className="mb-6 text-sm">
-          Order code: <b>{code}</b>
+        <p className="mb-6 text-muted-foreground">
+          Satu langkah lagi: kirim chat pesanan ke admin lewat WhatsApp. Admin akan membalas
+          dengan total ongkir dan cara pembayaran.
         </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button render={<a href={href} target="_blank" rel="noopener noreferrer">Open WhatsApp again</a>} />
-          <Button variant="outline" render={<Link href="/produk">Keep shopping</Link>} />
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            className="h-12 w-full max-w-sm bg-[#1f8f4e] text-base font-bold text-white hover:bg-[#19773f]"
+            render={
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                Kirim chat ke WhatsApp
+              </a>
+            }
+          />
+          <Button variant="outline" render={<Link href="/produk">Lanjut belanja</Link>} />
         </div>
       </main>
     );
@@ -215,22 +221,13 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
         <Button
           className="h-12 w-full bg-[#1f8f4e] text-base font-bold text-white hover:bg-[#19773f]"
           disabled={!ready}
-          render={
-            <a
-              href={ready ? href : undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                if (!ready) return;
-                setSubmitted({ cart: items, buyer });
-                setSent(true);
-                clear();
-              }}
-            >
-              Send order via WhatsApp
-            </a>
-          }
-        />
+          onClick={() => {
+            setError("");
+            setConfirming(true);
+          }}
+        >
+          Send order via WhatsApp
+        </Button>
         <Button
           variant="outline"
           className="w-full"
@@ -252,6 +249,53 @@ export function WaCheckout({ defaultName }: { defaultName: string }) {
           </p>
         )}
       </div>
+
+      <Dialog open={confirming} onOpenChange={(o) => !saving && setConfirming(o)}>
+        <DialogContent className="theme-shop">
+          <DialogHeader>
+            <DialogTitle>Pesanan sudah sesuai, Kak?</DialogTitle>
+            <DialogDescription render={<div />} className="space-y-2 text-sm leading-relaxed">
+              {hasReady ? (
+                <p>
+                  Dengan menekan <b>Ya, pesan sekarang</b>, pesanan Kakak kami anggap{" "}
+                  <b>final</b>. Stok barang Ready Stock akan <b>langsung kami sisihkan</b> khusus
+                  untuk Kakak, sehingga pesanan ini <b>tidak dapat dibatalkan</b>.
+                </p>
+              ) : (
+                <p>
+                  Dengan menekan <b>Ya, pesan sekarang</b>, pesanan Pre-Order Kakak akan kami
+                  catat dan diteruskan ke admin lewat WhatsApp.
+                </p>
+              )}
+              <p>Mohon pastikan barang, varian, dan jumlahnya sudah benar ya, Kak. Terima kasih 🙏</p>
+            </DialogDescription>
+          </DialogHeader>
+          {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => setConfirming(false)}>
+              Cek lagi
+            </Button>
+            <Button
+              className="bg-[#1f8f4e] font-bold text-white hover:bg-[#19773f]"
+              disabled={saving}
+              onClick={() =>
+                startSaving(async () => {
+                  const r = await submitWaOrder(code, items, buyer);
+                  if (!r.ok) {
+                    setError(r.error);
+                    return;
+                  }
+                  setConfirming(false);
+                  setSent(true);
+                  clear();
+                })
+              }
+            >
+              {saving ? "Menyimpan..." : "Ya, pesan sekarang"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
