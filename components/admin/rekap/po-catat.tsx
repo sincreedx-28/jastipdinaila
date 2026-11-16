@@ -3,7 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addPoOrder, changePoOrderQty, deletePoOrder } from "@/lib/actions/rekap";
+import {
+  addPoOrder,
+  changePoOrderQty,
+  deletePoOrder,
+  publishItemToCatalog,
+  uploadItemPhoto,
+} from "@/lib/actions/rekap";
+import { compressImage } from "@/lib/compress-image";
 import { itemKey, productItemKey, rp, tidy, type ItemRow } from "@/lib/rekap";
 import { ItemPicker, Thumb, type PickedItem } from "./item-picker";
 import { BuyerPicker } from "./buyer-picker";
@@ -39,6 +46,10 @@ export function PoCatat({
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState("");
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  // For hand-typed items: a photo to attach and whether to publish it.
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [publish, setPublish] = useState(false);
   // Bumped after each save to give the item field a fresh, empty start.
   const [pickerKey, setPickerKey] = useState(0);
   const itemRef = useRef<HTMLInputElement>(null);
@@ -65,11 +76,19 @@ export function PoCatat({
         ? `Harga dari katalog ${rp(catalogPrice)}, kosongkan kolom harga untuk memakainya`
         : "Barang baru di PO Event ini";
 
+  const setPhotoFile = (f: File | null) => {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    setPhoto(f);
+    setPhotoUrl(f ? URL.createObjectURL(f) : null);
+  };
+
   const pickItem = (v: PickedItem | null) => {
     setItem(v);
     setVariant("");
     setOtherVariant(false);
     setPrice("");
+    setPhotoFile(null);
+    setPublish(false);
   };
 
   const save = () => {
@@ -78,9 +97,16 @@ export function PoCatat({
     if (item.variants.length && !otherVariant && !variant)
       return run(async () => ({ ok: false as const, error: "Pilih variannya dulu." }));
     const p = Number(price.replace(/\D/g, "")) || suggested || 0;
+    if (publish && !p) {
+      return run(async () => ({
+        ok: false as const,
+        error: "Isi harga satuan dulu supaya bisa tampil di katalog PO.",
+      }));
+    }
+    const label = `${buyer.name} · ${item.name}${variant ? ` (${tidy(variant)})` : ""} x${qty}`;
     run(
-      () =>
-        addPoOrder({
+      async () => {
+        const r = await addPoOrder({
           eventId: data.eventId!,
           buyerId: buyer.id,
           productId: item.productId,
@@ -88,9 +114,23 @@ export function PoCatat({
           variant,
           qty,
           price: p,
-        }),
+        });
+        if (!r.ok || item.productId) return r;
+        if (photo) {
+          const fd = new FormData();
+          fd.set("image", photo);
+          const u = await uploadItemPhoto(r.itemId, fd);
+          if (!u.ok) return { ok: false as const, error: `Order tersimpan, tapi foto gagal: ${u.error}` };
+        }
+        if (publish) {
+          const pub = await publishItemToCatalog(r.itemId);
+          if (!pub.ok)
+            return { ok: false as const, error: `Order tersimpan, tapi belum tampil di katalog: ${pub.error}` };
+        }
+        return r;
+      },
       {
-        success: `Tersimpan: ${buyer.name} · ${item.name}${variant ? ` (${tidy(variant)})` : ""} x${qty}`,
+        success: `Tersimpan: ${label}${publish ? " · tampil di katalog PO" : ""}`,
         onOk: () => {
           pickItem(null);
           setPickerKey((k) => k + 1);
@@ -179,6 +219,54 @@ export function PoCatat({
                 aria-label="Varian"
               />
             )}
+          </div>
+        )}
+
+        {item && !item.productId && (
+          <div className="space-y-3 rounded-xl bg-secondary/60 p-3">
+            <div className="flex items-center gap-3">
+              <Thumb src={photoUrl ?? item.image} name={item.name} size={56} />
+              <label className="cursor-pointer">
+                <span className="inline-flex min-h-10 items-center rounded-xl border bg-background px-3 text-sm font-bold text-secondary-foreground">
+                  {photoUrl || item.image ? "Ganti foto" : "+ Tambah foto"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  aria-label="Foto barang"
+                  onChange={async (e) => {
+                    const f = e.currentTarget.files?.[0];
+                    e.currentTarget.value = "";
+                    if (f) setPhotoFile(await compressImage(f));
+                  }}
+                />
+              </label>
+              {photoUrl && (
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground underline"
+                  onClick={() => setPhotoFile(null)}
+                >
+                  hapus
+                </button>
+              )}
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-5 w-5 shrink-0"
+                checked={publish}
+                onChange={(e) => setPublish(e.target.checked)}
+              />
+              <span>
+                <b>Tampilkan di katalog PO</b> (toko)
+                <span className="block text-muted-foreground">
+                  Barang ini jadi produk Pre-Order batch ini (pakai foto ini dan harga satuan),
+                  supaya pembeli lain bisa ikut order dari web.
+                </span>
+              </span>
+            </label>
           </div>
         )}
 

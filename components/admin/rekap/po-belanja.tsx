@@ -10,6 +10,7 @@ import {
   setItemPrice,
   setItemSoldOut,
   uploadItemPhoto,
+  publishItemToCatalog,
 } from "@/lib/actions/rekap";
 import { compressImage } from "@/lib/compress-image";
 import { Thumb } from "./item-picker";
@@ -273,6 +274,20 @@ export function PoBelanja({
                   >
                     {r.soldOut ? "Buka lagi" : "Tandai stok habis"}
                   </Button>
+                  {!r.productId && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        run(() => publishItemToCatalog(r.id), {
+                          success: "Tampil di katalog PO. Lengkapi berat & deskripsinya di menu Produk.",
+                        })
+                      }
+                    >
+                      Tampilkan di katalog PO
+                    </Button>
+                  )}
                 </div>
                 {r.orders.length > 0 && (
                   <details className="text-sm">

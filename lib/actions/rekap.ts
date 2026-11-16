@@ -123,7 +123,7 @@ export async function addPoOrder(input: {
   variant: string;
   qty: number;
   price: number;
-}): Promise<RekapResult> {
+}): Promise<RekapResult<{ itemId: string }>> {
   const admin = await requireAdminAction();
   let name = tidy(input.name).slice(0, 120);
   const variant = tidy(input.variant).slice(0, 60);
@@ -151,7 +151,7 @@ export async function addPoOrder(input: {
   if (product) name = product.name;
   const key = product ? productItemKey(product.id, variant) : itemKey(name, variant);
 
-  await prisma.$transaction(async (tx) => {
+  const itemId = await prisma.$transaction(async (tx) => {
     let item = await tx.poItem.findUnique({ where: { eventId_key: { eventId: event.id, key } } });
     if (!item) {
       item = await tx.poItem.upsert({
@@ -165,9 +165,10 @@ export async function addPoOrder(input: {
     await tx.poOrder.create({
       data: { eventId: event.id, itemId: item.id, buyerId: buyer.id, qty, adminName: admin.name },
     });
+    return item.id;
   });
   done();
-  return { ok: true };
+  return { ok: true, itemId };
 }
 
 export async function changePoOrderQty(orderId: string, delta: number): Promise<RekapResult> {
@@ -266,6 +267,88 @@ export async function uploadItemPhoto(itemId: string, formData: FormData): Promi
   await prisma.poItem.update({ where: { id: itemId }, data: { imageUrl: data.publicUrl } });
   done();
   return { ok: true };
+}
+
+/**
+ * "Tampilkan di katalog PO": turns a hand-typed item into a real Pre-Order
+ * product of this batch, so it shows in the shop. Every hand-typed line with
+ * the same name in the batch becomes one product, each variant with its own
+ * price; those lines are then linked to it (still one SKU each).
+ */
+export async function publishItemToCatalog(
+  itemId: string
+): Promise<RekapResult<{ productId: string; slug: string }>> {
+  await requireAdminAction();
+  const item = await prisma.poItem.findUnique({ where: { id: itemId } });
+  if (!item) return fail("Barang tidak ditemukan.");
+  if (item.productId) {
+    const p = await prisma.product.findUnique({ where: { id: item.productId }, select: { slug: true } });
+    return p ? { ok: true, productId: item.productId, slug: p.slug } : fail("Produk tidak ditemukan.");
+  }
+
+  const siblings = await prisma.poItem.findMany({
+    where: { eventId: item.eventId, productId: null, name: { equals: item.name, mode: "insensitive" } },
+    orderBy: { createdAt: "asc" },
+  });
+  const unpriced = siblings.filter((s) => s.price <= 0);
+  if (unpriced.length) {
+    const what = unpriced.map((s) => (s.variant ? `${s.name} (${s.variant})` : s.name)).join(", ");
+    return fail(`Isi harga jual dulu untuk: ${what}. Bisa di Daftar belanja.`);
+  }
+  const named = siblings.filter((s) => s.variant);
+  const rows = named.length ? named : [siblings[0]];
+  const image = siblings.find((s) => s.imageUrl)?.imageUrl ?? null;
+
+  const slug =
+    item.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") +
+    "-" +
+    Math.random().toString(36).slice(2, 7);
+
+  const productId = await prisma.$transaction(async (tx) => {
+    const product = await tx.product.create({
+      data: {
+        slug,
+        name: item.name,
+        description: "",
+        type: "PO",
+        price: Math.min(...rows.map((r) => r.price)),
+        // Shipping needs a weight and size; a light parcel until the admin
+        // fills in the real numbers in Produk.
+        weightGrams: 250,
+        lengthCm: 15,
+        widthCm: 10,
+        heightCm: 5,
+        poEventId: item.eventId,
+        legacyVariants: named.map((r) => r.variant),
+        variants: {
+          create: rows.map((r, i) => ({ name: r.variant, sortOrder: i, price: r.price, stockQty: null })),
+        },
+        images: image ? { create: { url: image, sortOrder: 0 } } : undefined,
+      },
+    });
+    // Link the lines; a line without a variant on a product with variants
+    // keeps its own key (it simply has no matching option).
+    for (const s of siblings) {
+      const newKey = productItemKey(product.id, s.variant);
+      const clash = await tx.poItem.findUnique({
+        where: { eventId_key: { eventId: s.eventId, key: newKey } },
+        select: { id: true },
+      });
+      await tx.poItem.update({
+        where: { id: s.id },
+        data: { productId: product.id, ...(clash ? {} : { key: newKey }) },
+      });
+    }
+    return product.id;
+  });
+
+  done();
+  revalidatePath("/produk");
+  revalidatePath("/admin/produk");
+  return { ok: true, productId, slug };
 }
 
 // --- Ready Stock sales --------------------------------------------------------
