@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buyerMatches, fmtPhone, orderStatus, rp, type ItemRow, type OrderStatus } from "@/lib/rekap";
 import { copyText, Empty, type Buyer } from "./shared";
+import { Thumb } from "./item-picker";
 
 const LINE_CLASS: Record<OrderStatus, string> = {
   dapat: "text-emerald-700",
@@ -15,6 +16,7 @@ const LINE_CLASS: Record<OrderStatus, string> = {
 
 type Line = {
   orderId: string;
+  image: string | null | undefined;
   name: string;
   variant: string;
   qty: number;
@@ -34,7 +36,7 @@ function buildRecaps(rows: ItemRow[], alloc: Map<string, number>, buyersById: Ma
       const got = alloc.get(o.id) ?? 0;
       const [status, label] = orderStatus(o.qty, got, r.soldOut);
       const rec = map.get(o.buyerId) ?? { buyer, lines: [], total: 0, final: true, missingPrice: false };
-      rec.lines.push({ orderId: o.id, name: r.name, variant: r.variant, qty: o.qty, got, price: r.price, status, label });
+      rec.lines.push({ orderId: o.id, image: r.image, name: r.name, variant: r.variant, qty: o.qty, got, price: r.price, status, label });
       rec.total += got * r.price;
       if (status === "wait" || (status === "part" && !r.soldOut)) rec.final = false;
       if (got > 0 && !r.price) rec.missingPrice = true;
@@ -122,8 +124,9 @@ export function PoPembeli({
               </div>
               <ul className="divide-y border-y">
                 {rec.lines.map((l) => (
-                  <li key={l.orderId} className="flex items-start justify-between gap-3 py-2 text-sm">
-                    <div className="min-w-0">
+                  <li key={l.orderId} className="flex items-center gap-3 py-2 text-sm">
+                    <Thumb src={l.image} name={l.name} size={36} />
+                    <div className="min-w-0 flex-1">
                       {l.name}
                       {l.variant ? ` (${l.variant})` : ""}{" "}
                       <span className="text-muted-foreground">x{l.qty}</span>

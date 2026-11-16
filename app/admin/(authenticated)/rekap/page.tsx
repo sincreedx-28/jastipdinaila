@@ -47,13 +47,24 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
     if (current) {
       data.eventId = current.id;
       const [items, orders, products] = await Promise.all([
-        prisma.poItem.findMany({ where: { eventId: current.id }, orderBy: { name: "asc" } }),
+        prisma.poItem.findMany({
+          where: { eventId: current.id },
+          orderBy: { name: "asc" },
+          include: {
+            product: { select: { images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } } } },
+          },
+        }),
         prisma.poOrder.findMany({ where: { eventId: current.id }, orderBy: { createdAt: "asc" } }),
         prisma.product.findMany({
-          where: { isActive: true },
+          // Every product of this batch (even hidden ones), plus the rest of
+          // the active catalog for items bought outside the plan.
+          where: { OR: [{ poEventId: current.id }, { isActive: true }] },
           select: {
+            id: true,
             name: true,
             type: true,
+            poEventId: true,
+            images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
             variants: { select: { name: true, price: true }, orderBy: { sortOrder: "asc" } },
           },
           orderBy: { name: "asc" },
@@ -67,6 +78,8 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
         price: i.price,
         got: i.got,
         soldOut: i.soldOut,
+        productId: i.productId,
+        image: i.imageUrl ?? i.product?.images[0]?.url ?? null,
         // Purchase cost never leaves the server for non-owner admins.
         ...(isOwner ? { cost: i.cost } : {}),
       }));
@@ -77,14 +90,15 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
         qty: o.qty,
         createdAt: o.createdAt.toISOString(),
       }));
-      // Pre-Order products first, for the "Barang" suggestions.
-      data.catalog = products
-        .sort((a, b) => Number(b.type === "PO") - Number(a.type === "PO"))
-        .map((p) => ({
-          name: p.name,
-          variants: p.variants.filter((v) => v.name).map((v) => ({ name: v.name, price: v.price })),
-          price: Math.min(...p.variants.map((v) => v.price)),
-        }));
+      data.catalog = products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        inEvent: p.poEventId === current.id,
+        image: p.images[0]?.url ?? null,
+        variants: p.variants.filter((v) => v.name).map((v) => ({ name: v.name, price: v.price })),
+        price: p.variants.length ? Math.min(...p.variants.map((v) => v.price)) : 0,
+      }));
     }
   } else {
     const month = /^\d{4}-\d{2}$/.test(sp.bulan ?? "") ? sp.bulan! : jakartaMonth();

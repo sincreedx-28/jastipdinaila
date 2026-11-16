@@ -44,6 +44,12 @@ const slug = (s: string) =>
 /** Same item + variant always lands on the same shopping-list line. */
 export const itemKey = (name: string, variant: string) => `${slug(name)}|${slug(variant)}`;
 
+/**
+ * Catalog products are keyed by id, so every order of the same product +
+ * variant is one SKU even if the product is renamed later.
+ */
+export const productItemKey = (productId: string, variant: string) => `p:${productId}|${slug(variant)}`;
+
 export const rp = (n: number) => `Rp${Math.round(n).toLocaleString("id-ID")}`;
 
 // --- FIFO allocation --------------------------------------------------------
@@ -58,6 +64,9 @@ export type RekapItem = {
   soldOut: boolean;
   /** Owner only; undefined for other admins. */
   cost?: number | null;
+  productId?: string | null;
+  /** Product photo, or the photo taken for a hand-typed item. */
+  image?: string | null;
 };
 
 export type RekapOrder = {

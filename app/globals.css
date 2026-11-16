@@ -286,7 +286,7 @@
 }
 .theme-admin [data-size="sm"]:not([data-slot="select-trigger"]) {
   min-height: 36px;
-  padding-inline: 12px;
+  padding-inline: 11px;
 }
 .theme-admin [data-variant="outline"],
 .theme-admin [data-variant="secondary"] {

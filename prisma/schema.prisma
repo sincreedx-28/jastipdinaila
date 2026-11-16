@@ -70,6 +70,10 @@ model Product {
   // pages can sort/filter without joining — see lib/product-stock.ts.
   variants ProductVariant[]
 
+  // Pre-Order products: which shopping trip / PO Event they belong to.
+  poEventId String?
+  poEvent   PoEvent? @relation(fields: [poEventId], references: [id], onDelete: SetNull)
+
   images     ProductImage[]
   orderItems OrderItem[]
   poItems    PoItem[]
@@ -79,6 +83,7 @@ model Product {
   updatedAt DateTime @updatedAt
 
   @@index([type, isActive])
+  @@index([poEventId])
 }
 
 model ProductVariant {
@@ -323,8 +328,9 @@ model PoEvent {
   status    PoEventStatus @default(OPEN)
   createdAt DateTime      @default(now())
 
-  items  PoItem[]
-  orders PoOrder[]
+  items    PoItem[]
+  orders   PoOrder[]
+  products Product[]
 
   @@index([status, createdAt])
 }
@@ -358,6 +364,9 @@ model PoItem {
 
   productId String?
   product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Photo for items typed in by hand (catalog products use their own photo).
+  imageUrl String?
 
   // Selling price per pcs; 0 = not decided yet.
   price   Int     @default(0)

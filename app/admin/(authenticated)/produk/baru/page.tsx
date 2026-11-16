@@ -2,13 +2,18 @@ import Link from "next/link";
 import { ProductForm } from "@/components/admin/product-form";
 import { createProduct } from "@/lib/actions/products";
 import { getCurrentAdmin } from "@/lib/admin-auth";
+import { listPoEventOptions } from "@/lib/po-events";
 
 export default async function NewProductPage({
   searchParams,
 }: {
   searchParams: Promise<{ grup?: string }>;
 }) {
-  const [{ grup }, admin] = await Promise.all([searchParams, getCurrentAdmin()]);
+  const [{ grup }, admin, poEvents] = await Promise.all([
+    searchParams,
+    getCurrentAdmin(),
+    listPoEventOptions(),
+  ]);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -22,6 +27,7 @@ export default async function NewProductPage({
         submitLabel="Simpan produk"
         defaultGroup={grup}
         isOwner={Boolean(admin?.isSuperAdmin)}
+        poEvents={poEvents}
       />
     </div>
   );

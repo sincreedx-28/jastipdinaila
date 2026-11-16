@@ -9,7 +9,10 @@ import {
   setItemGot,
   setItemPrice,
   setItemSoldOut,
+  uploadItemPhoto,
 } from "@/lib/actions/rekap";
+import { compressImage } from "@/lib/compress-image";
+import { Thumb } from "./item-picker";
 import { itemStatus, type ItemRow, type ItemStatus } from "@/lib/rekap";
 import { copyText, Empty, Stepper, useRekapAction, type Buyer } from "./shared";
 
@@ -20,6 +23,41 @@ const STATUS_CLASS: Record<ItemStatus, string> = {
   pas: "bg-emerald-100 text-emerald-800",
   habis: "bg-destructive/10 text-destructive",
 };
+
+/**
+ * Item photo. Catalog products show their own photo; for hand-typed items
+ * the admin can snap one with the phone camera (tap the picture).
+ */
+function ItemPhoto({ row }: { row: ItemRow }) {
+  const { pending, run } = useRekapAction();
+  const thumb = <Thumb src={row.image} name={row.name} size={56} />;
+  if (row.productId) return thumb;
+  return (
+    <label className="relative cursor-pointer" title="Tambah/ganti foto">
+      {thumb}
+      <span className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+        {pending ? "…" : row.image ? "ganti" : "+ foto"}
+      </span>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        aria-label={`Foto ${row.name}`}
+        disabled={pending}
+        onChange={async (e) => {
+          const file = e.currentTarget.files?.[0];
+          e.currentTarget.value = "";
+          if (!file) return;
+          const small = await compressImage(file);
+          const fd = new FormData();
+          fd.set("image", small);
+          run(() => uploadItemPhoto(row.id, fd), { success: "Foto disimpan" });
+        }}
+      />
+    </label>
+  );
+}
 
 /** Number field that saves when it loses focus (or on Enter) if changed. */
 function MoneyCell({
@@ -176,7 +214,8 @@ export function PoBelanja({
             return (
               <li key={r.id} className="box space-y-3 p-4">
                 <div className="flex flex-wrap items-start gap-3">
-                  <div className="min-w-0 flex-1 basis-44">
+                  <ItemPhoto row={r} />
+                  <div className="min-w-0 flex-1 basis-36">
                     <b>{r.name}</b>
                     {r.variant && <span className="text-muted-foreground"> · {r.variant}</span>}
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">

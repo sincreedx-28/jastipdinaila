@@ -264,7 +264,7 @@ export function VariantEditor({
                 size="sm"
                 onClick={() => setRows((rs) => rs.map((r) => ({ ...r, price: rs[0].price })))}
               >
-                Samakan semua harga dengan baris pertama
+                Samakan harga semua varian
               </Button>
             )}
           </div>
