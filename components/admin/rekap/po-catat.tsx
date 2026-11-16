@@ -13,6 +13,7 @@ import {
 import { compressImage } from "@/lib/compress-image";
 import { itemKey, productItemKey, rp, tidy, type ItemRow } from "@/lib/rekap";
 import { ItemPicker, Thumb, type PickedItem } from "./item-picker";
+import { PasteOrder } from "./paste-order";
 import { BuyerPicker } from "./buyer-picker";
 import { Stepper, useRekapAction, type Buyer } from "./shared";
 import type { RekapData } from "./rekap-app";
@@ -296,6 +297,13 @@ export function PoCatat({
           {pending ? "Menyimpan..." : "Simpan order"}
         </Button>
       </form>
+
+      <PasteOrder
+        eventId={data.eventId!}
+        eventName={data.events.find((e) => e.id === data.eventId)?.name ?? ""}
+        buyers={data.buyers}
+        catalog={data.catalog}
+      />
 
       <section className="space-y-2">
         <h3 className="text-lg">Order terakhir</h3>

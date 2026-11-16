@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { ORDER_STATUS_LABELS, orderStatusClass } from "@/lib/order-status";
 
 export default async function AdminDashboardPage() {
-  const [productCount, paidOrders, unpaidOrders, lowStock, recentOrders] = await Promise.all([
+  const [productCount, paidOrders, unpaidOrders, lowStock, recentOrders, waPending] = await Promise.all([
     prisma.product.count({ where: { isActive: true } }),
     prisma.order.count({ where: { status: "PAID" } }),
     prisma.order.count({ where: { status: "PENDING_PAYMENT" } }),
     prisma.product.count({ where: { isActive: true, type: "READY", stockQty: { lte: 0 } } }),
     prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    prisma.waOrder.count({ where: { status: "PENDING" } }),
   ]);
 
   const stats = [
@@ -20,6 +21,17 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {waPending > 0 && (
+        <Link
+          href="/admin/rekap"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-primary bg-secondary p-4 font-bold text-secondary-foreground"
+        >
+          <span>
+            {waPending} pesanan dari tombol WhatsApp web menunggu konfirmasi
+          </span>
+          <span className="shrink-0 text-primary">Buka Rekap →</span>
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {stats.map((stat) => (
           <Link

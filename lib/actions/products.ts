@@ -114,18 +114,31 @@ function parseProductFields(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const typeRaw = String(formData.get("type") ?? "READY");
   const type: ProductType = typeRaw === "PO" ? "PO" : "READY";
-  const weightGrams = Number(formData.get("weightGrams"));
-  const lengthCm = Number(formData.get("lengthCm"));
-  const widthCm = Number(formData.get("widthCm"));
-  const heightCm = Number(formData.get("heightCm"));
+  // Weight and parcel size drive the shipping cost of web checkout, which
+  // only Ready Stock uses — required there, optional (0 = not filled) for PO.
+  const num = (k: string) => {
+    const raw = String(formData.get(k) ?? "").trim();
+    return raw === "" ? (typeRaw === "PO" ? 0 : NaN) : Number(raw);
+  };
+  const weightGrams = num("weightGrams");
+  const lengthCm = num("lengthCm");
+  const widthCm = num("widthCm");
+  const heightCm = num("heightCm");
   const group = String(formData.get("group") ?? "").trim() || null;
   const category = String(formData.get("category") ?? "").trim() || null;
 
   if (!name) throw new Error("Nama produk wajib diisi.");
-  if (!Number.isFinite(weightGrams) || weightGrams <= 0)
-    throw new Error("Berat tidak valid.");
-  if (![lengthCm, widthCm, heightCm].every((n) => Number.isFinite(n) && n > 0))
-    throw new Error("Dimensi (panjang/lebar/tinggi) tidak valid.");
+  const minSize = type === "READY" ? 1 : 0;
+  if (!Number.isFinite(weightGrams) || weightGrams < minSize)
+    throw new Error(
+      type === "READY" ? "Isi berat barang (gram), wajib untuk Ready Stock supaya ongkir tepat." : "Berat tidak valid."
+    );
+  if (![lengthCm, widthCm, heightCm].every((n) => Number.isFinite(n) && n >= minSize))
+    throw new Error(
+      type === "READY"
+        ? "Isi panjang, lebar, dan tinggi paket (cm), wajib untuk Ready Stock supaya ongkir tepat."
+        : "Ukuran paket tidak valid."
+    );
 
   const variants = parseVariants(formData, type);
   const poEventId =

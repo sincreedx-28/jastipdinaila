@@ -426,3 +426,132 @@ export async function deleteReadySale(saleId: string): Promise<RekapResult> {
   revalidatePath("/admin/produk");
   return { ok: true };
 }
+
+// --- Orders from the web's WhatsApp checkout ----------------------------------
+
+type StoredWaLine = {
+  productId?: string;
+  variantId?: string;
+  name: string;
+  variant: string;
+  qty: number;
+  price: number;
+  type: "READY" | "PO";
+  eventId?: string | null;
+};
+
+/**
+ * Confirms an order sent from the web's WhatsApp button once its chat has
+ * arrived: Pre-Order lines go into their batch's recap (or the PO Event open
+ * on screen if the product has no batch) and Ready Stock lines become sales
+ * that take stock. All or nothing.
+ */
+export async function confirmWaOrder(
+  id: string,
+  fallbackEventId: string | null
+): Promise<RekapResult> {
+  const admin = await requireAdminAction();
+  const order = await prisma.waOrder.findUnique({ where: { id } });
+  if (!order || order.status !== "PENDING") return fail("Pesanan ini sudah diproses.");
+  const lines = (Array.isArray(order.lines) ? order.lines : []) as unknown as StoredWaLine[];
+  if (!lines.length) return fail("Pesanan ini kosong.");
+
+  const poLines = lines.filter((l) => l.type === "PO");
+  const eventIds = [...new Set(poLines.map((l) => l.eventId || fallbackEventId).filter(Boolean))] as string[];
+  if (poLines.some((l) => !l.eventId && !fallbackEventId))
+    return fail("Ada barang PO tanpa batch. Buka/buat PO Event dulu, lalu konfirmasi lagi.");
+  const events = await prisma.poEvent.findMany({ where: { id: { in: eventIds } }, select: { id: true } });
+  if (events.length !== eventIds.length) return fail("Batch PO pesanan ini sudah tidak ada.");
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Customer: by phone; a name already used by someone else gets the
+      // last digits of the number so both stay distinguishable.
+      let buyer = await tx.buyer.findUnique({ where: { phone: order.phone } });
+      if (!buyer) {
+        let name = tidy(order.name);
+        if (await tx.buyer.findUnique({ where: { nameKey: nameKey(name) } }))
+          name = `${name} (${order.phone.slice(-4)})`;
+        if (await tx.buyer.findUnique({ where: { nameKey: nameKey(name) } }))
+          name = `${name} ${order.code}`;
+        buyer = await tx.buyer.create({ data: { name, nameKey: nameKey(name), phone: order.phone } });
+      }
+
+      for (const l of lines) {
+        const qty = Math.max(1, Math.floor(Number(l.qty)) || 1);
+        if (l.type === "PO") {
+          const eventId = (l.eventId || fallbackEventId)!;
+          const product = l.productId
+            ? await tx.product.findUnique({ where: { id: l.productId }, select: { id: true, name: true } })
+            : null;
+          const name = product?.name ?? tidy(l.name);
+          const key = product ? productItemKey(product.id, l.variant) : itemKey(name, l.variant);
+          const item = await tx.poItem.upsert({
+            where: { eventId_key: { eventId, key } },
+            create: { eventId, key, name, variant: tidy(l.variant), price: l.price, productId: product?.id },
+            update: {},
+          });
+          if (item.price === 0 && l.price > 0)
+            await tx.poItem.update({ where: { id: item.id }, data: { price: l.price } });
+          await tx.poOrder.create({
+            data: { eventId, itemId: item.id, buyerId: buyer.id, qty, adminName: `${admin.name} (web ${order.code})` },
+          });
+        } else {
+          const variant = l.variantId
+            ? await tx.productVariant.findUnique({
+                where: { id: l.variantId },
+                include: { product: { select: { name: true, group: true } } },
+              })
+            : null;
+          if (!variant) throw new OutOfStockError(`${l.name} sudah tidak ada di toko`);
+          await takeVariantStock(tx, variant.id, qty).catch(() => {
+            throw new OutOfStockError(
+              `stok ${variant.product.name}${variant.name ? ` (${variant.name})` : ""} tinggal ${variant.stockQty ?? 0}`
+            );
+          });
+          await syncProductTotals(tx, variant.productId);
+          await tx.readySale.create({
+            data: {
+              buyerId: buyer.id,
+              productId: variant.productId,
+              variantId: variant.id,
+              productName: variant.product.name,
+              variantName: variant.name,
+              category: variant.product.group,
+              qty,
+              price: l.price,
+              costSnapshot: variant.avgCost,
+              adminName: `${admin.name} (web ${order.code})`,
+            },
+          });
+        }
+      }
+
+      const { count } = await tx.waOrder.updateMany({
+        where: { id: order.id, status: "PENDING" },
+        data: { status: "CONFIRMED", buyerId: buyer.id, handledBy: admin.name, handledAt: new Date() },
+      });
+      if (count === 0) throw new Error("ALREADY_HANDLED");
+    });
+  } catch (e) {
+    if (e instanceof OutOfStockError) return fail(`Belum bisa dikonfirmasi: ${e.message}.`);
+    if (e instanceof Error && e.message === "ALREADY_HANDLED") return fail("Pesanan ini sudah diproses.");
+    throw e;
+  }
+  done();
+  revalidatePath("/produk");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/** "Tolak": the chat never came, or it's a duplicate / test. */
+export async function rejectWaOrder(id: string): Promise<RekapResult> {
+  const admin = await requireAdminAction();
+  await prisma.waOrder.updateMany({
+    where: { id, status: "PENDING" },
+    data: { status: "REJECTED", handledBy: admin.name, handledAt: new Date() },
+  });
+  done();
+  revalidatePath("/admin");
+  return { ok: true };
+}

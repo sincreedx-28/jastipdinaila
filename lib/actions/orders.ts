@@ -105,6 +105,9 @@ export async function createOrder(
     if (!product) {
       return { error: `Product "${cartItem.name}" is no longer available.` };
     }
+    if (product.type === "PO") {
+      return { error: "Pre-Order items are ordered through WhatsApp. Please go back to the cart." };
+    }
     const qty = Math.floor(Number(cartItem.qty));
     if (!Number.isFinite(qty) || qty < 1 || qty > 1000) {
       return { error: `Invalid quantity for "${product.name}".` };

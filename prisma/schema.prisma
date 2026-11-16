@@ -347,6 +347,7 @@ model Buyer {
 
   poOrders   PoOrder[]
   readySales ReadySale[]
+  waOrders   WaOrder[]
 }
 
 /// One line of the shopping list in a PO Event: an item (+ variant) that
@@ -426,4 +427,38 @@ model ReadySale {
 
   @@index([createdAt])
   @@index([buyerId])
+}
+
+enum WaOrderStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+/// An order a shopper sent from the web's "Order via WhatsApp" button. It
+/// waits here until the admin sees the chat and confirms it, then its lines
+/// go into Rekap Order (Pre-Order) and Ready Stock sales.
+model WaOrder {
+  id   String @id @default(cuid())
+  // Short code printed in the WhatsApp message, to match chat and record.
+  code String @unique
+
+  name    String
+  phone   String
+  address String
+  note    String?
+
+  /// [{ productId, variantId, name, variant, qty, price, type, batch, eventId }]
+  lines Json
+  total Int
+
+  status      WaOrderStatus @default(PENDING)
+  buyerId     String?
+  buyer       Buyer?        @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  handledBy   String?
+  handledAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([status, createdAt])
+  @@index([phone])
 }

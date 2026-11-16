@@ -12,6 +12,7 @@ import { PoBelanja } from "./po-belanja";
 import { PoPembeli } from "./po-pembeli";
 import { CustomerTab } from "./customer-tab";
 import { ReadyMode } from "./ready-mode";
+import { WebOrders, type WebOrder } from "./web-orders";
 
 export type CatalogEntry = {
   id: string;
@@ -53,6 +54,7 @@ export type RekapData = {
   sales: SaleRow[];
   month: string;
   months: string[];
+  webOrders: WebOrder[];
 };
 
 type PoTab = "catat" | "belanja" | "pembeli" | "customer";
@@ -102,6 +104,7 @@ export function RekapApp({ data }: { data: RekapData }) {
     return (
       <div className="space-y-4">
         <Title />
+        <WebOrders orders={data.webOrders} eventId={null} />
         {modeTabs}
         <ReadyMode data={data} buyersById={buyersById} />
       </div>
@@ -126,6 +129,7 @@ export function RekapApp({ data }: { data: RekapData }) {
   return (
     <div className="space-y-4">
       <Title />
+      <WebOrders orders={data.webOrders} eventId={data.eventId} />
       {modeTabs}
 
       <div className="flex flex-wrap gap-2">

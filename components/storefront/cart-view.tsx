@@ -18,6 +18,9 @@ export function CartView() {
   const hydrated = useCartStore((s) => s.hasHydrated);
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  // Pre-Order is always ordered through WhatsApp; a Ready-only cart can
+  // choose between paying on the web and ordering through WhatsApp.
+  const hasPreOrder = items.some((i) => i.type === "PO");
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
@@ -108,9 +111,33 @@ export function CartView() {
               <span>Total</span>
               <span>Rp{subtotal.toLocaleString("id-ID")}</span>
             </div>
-            <Button className="w-full" onClick={() => router.push("/checkout")}>
-              Checkout
-            </Button>
+            {hasPreOrder ? (
+              <>
+                <Button
+                  className="h-11 w-full bg-[#1f8f4e] font-bold text-white hover:bg-[#19773f]"
+                  onClick={() => router.push("/checkout/wa")}
+                >
+                  Checkout via WhatsApp
+                </Button>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Carts with Pre-Order items are ordered through WhatsApp. The admin will confirm
+                  shipping and payment in the chat.
+                </p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Button className="h-11 w-full font-bold" onClick={() => router.push("/checkout")}>
+                  Checkout &amp; pay here
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 w-full font-bold"
+                  onClick={() => router.push("/checkout/wa")}
+                >
+                  Order via WhatsApp
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
