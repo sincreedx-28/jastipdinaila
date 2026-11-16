@@ -36,7 +36,7 @@ function parse(input: PoEventInput) {
   for (const [k, label] of [
     ["openDate", "Order dibuka"],
     ["closeDate", "Order ditutup"],
-    ["etaDate", "Estimasi ready"],
+    ["etaDate", "Estimasi tiba"],
   ] as const) {
     if (input[k] && !isDay(input[k])) return { error: `Tanggal "${label}" tidak valid.` };
   }

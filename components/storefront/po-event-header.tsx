@@ -52,7 +52,7 @@ export function PoEventHeader({ event, compact }: { event: PoEventInfo; compact?
           <b className="text-sm">{periodLabel(event)}</b>
         </div>
         <div className="rounded-xl bg-card px-3 py-2">
-          <span className="block text-xs text-muted-foreground">Estimated ready</span>
+          <span className="block text-xs text-muted-foreground">Estimated arrival (ETA)</span>
           <b className="text-sm">{etaLabel(event)}</b>
           {event.etaDate && event.etaNote && (
             <span className="block text-xs text-muted-foreground">{event.etaNote}</span>
