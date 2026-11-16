@@ -26,7 +26,7 @@ const STATUS_CLASS: Record<ItemStatus, string> = {
 
 /**
  * Item photo. Catalog products show their own photo; for hand-typed items
- * the admin can snap one with the phone camera (tap the picture).
+ * the admin taps the picture to take a photo or pick one from the gallery.
  */
 function ItemPhoto({ row }: { row: ItemRow }) {
   const { pending, run } = useRekapAction();
@@ -40,8 +40,8 @@ function ItemPhoto({ row }: { row: ItemRow }) {
       </span>
       <input
         type="file"
+        // No "capture": phones then offer both the camera and the gallery.
         accept="image/*"
-        capture="environment"
         className="sr-only"
         aria-label={`Foto ${row.name}`}
         disabled={pending}
