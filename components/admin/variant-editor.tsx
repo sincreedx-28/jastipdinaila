@@ -113,6 +113,10 @@ export function VariantEditor({
     setTaken((t) => ({ ...t, [row.key]: m && !own ? m : null }));
   };
   const [quickAdd, setQuickAdd] = useState("");
+  const scannedNew = Boolean(presetBarcode && !initial?.length);
+  const scannedExisting = Boolean(
+    presetBarcode && initial?.length && !initial.some((v) => v.barcode === presetBarcode)
+  );
 
   const isReady = type === "READY";
   // Read live from props (not row state) so it follows stock changes made in
@@ -121,7 +125,11 @@ export function VariantEditor({
   const update = (key: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
-  const payload: VariantInput[] = (hasOptions ? rows : rows.slice(0, 1)).map((r) => ({
+  // Untouched extra rows (no name, barcode or stock typed) are just left-over
+  // placeholders: skip them instead of failing with "nama varian wajib".
+  const isBlank = (r: Row) => !r.id && !r.name.trim() && !r.barcode.trim() && !r.initialStock && !r.initialCost;
+  const used = hasOptions ? rows.filter((r, i) => i === 0 || !isBlank(r)) : rows.slice(0, 1);
+  const payload: VariantInput[] = used.map((r) => ({
     id: r.id,
     name: hasOptions ? r.name : "",
     price: Number(r.price || 0),
@@ -183,21 +191,50 @@ export function VariantEditor({
     <div className="box space-y-3 p-4">
       <input type="hidden" name="variantsJson" value={JSON.stringify(payload)} />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-base">Harga{isReady ? " & stok" : ""}</Label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-primary"
-            checked={hasOptions}
-            onChange={(e) => toggleOptions(e.target.checked)}
-          />
-          Ada pilihan varian (ukuran/warna/shade)
-        </label>
-      </div>
+      <Label className="text-base">Varian, harga{isReady ? " & stok" : ""}</Label>
+
+      {scannedNew && (
+        <p className="soft-note">
+          📷 Barcode hasil scan sudah terisi. Kalau barang ini ada beberapa shade/ukuran/warna: isi{" "}
+          <b>Nama produk</b> dengan judul umumnya saja (mis. <i>Lip Tint Glow</i>), pilih{" "}
+          <b>Ya, ada varian</b>, lalu isi nama shade-nya (mis. <i>01 Peach</i>). Shade lain nanti
+          tinggal di-scan → pilih produk ini → Lanjut.
+        </p>
+      )}
+      {scannedExisting && (
+        <p className="soft-note">
+          📷 Barcode hasil scan masuk sebagai <b>varian baru</b> (baris paling bawah). Tinggal isi
+          nama shade/ukurannya, lalu simpan.
+        </p>
+      )}
+
+      <fieldset className="space-y-2">
+        <legend className="mb-2 text-sm font-semibold">
+          Barang ini ada pilihan shade / ukuran / warna?
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="pill"
+            data-active={!hasOptions}
+            onClick={() => hasOptions && toggleOptions(false)}
+          >
+            Tidak, cuma 1 macam
+          </button>
+          <button
+            type="button"
+            className="pill"
+            data-active={hasOptions}
+            onClick={() => !hasOptions && toggleOptions(true)}
+          >
+            Ya, ada varian
+          </button>
+        </div>
+      </fieldset>
       <p className="text-xs text-muted-foreground">
-        Harga jual = harga final yang dilihat pelanggan, fee jastip sudah termasuk.
-        {hasOptions && " Tiap varian boleh beda harga."}
+        {hasOptions
+          ? "Nama produk = judul umum (mis. Lip Tint Glow). Nama varian = pembedanya (mis. 01 Peach, 02 Rose). Tiap varian boleh beda harga & punya barcode sendiri, tapi tetap tampil sebagai 1 produk di toko."
+          : "Harga jual = harga final yang dilihat pelanggan, fee jastip sudah termasuk."}
       </p>
 
       <div className="space-y-3">
@@ -212,7 +249,8 @@ export function VariantEditor({
                 <Input
                   aria-label="Nama varian"
                   value={row.name}
-                  placeholder="mis. M / 21 Natural"
+                  autoFocus={scannedExisting && !row.id && row.barcode === presetBarcode}
+                  placeholder="mis. 01 Peach / M"
                   onChange={(e) => update(row.key, { name: e.target.value })}
                 />
               </div>

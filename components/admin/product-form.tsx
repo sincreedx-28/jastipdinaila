@@ -92,7 +92,13 @@ export function ProductForm({
   return (
     <form action={formAction} className="max-w-2xl space-y-5">
       <Field label="Nama produk" htmlFor="name">
-        <Input id="name" name="name" defaultValue={defaultValues?.name} required />
+        <Input
+          id="name"
+          name="name"
+          defaultValue={defaultValues?.name}
+          placeholder="mis. Lip Tint Glow (tanpa nama shade/ukuran)"
+          required
+        />
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">

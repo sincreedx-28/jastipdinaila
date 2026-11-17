@@ -52,12 +52,6 @@ export default async function EditProductPage({
         </Link>
         <h2 className="text-2xl">Edit produk</h2>
       </div>
-      {barcode && (
-        <p className="soft-note max-w-2xl">
-          Barcode <b>{cleanBarcode(barcode)}</b> disiapkan sebagai <b>varian baru</b> di bawah
-          (mis. shade baru). Isi nama varian &amp; harganya, lalu simpan.
-        </p>
-      )}
       {baru === "salinan" && (
         <p className="soft-note max-w-2xl">
           Ini salinan produk dan masih <b>nonaktif</b> (belum tampil di toko). Ganti nama,

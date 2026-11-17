@@ -22,12 +22,18 @@ export function UnknownBarcode({
   return (
     <div className="box space-y-3 p-4">
       <p>
-        Barcode <b>{code}</b> belum terdaftar.
+        Barcode <b>{code}</b> belum terdaftar. Barang ini…
       </p>
-      <Button render={<Link href={`/admin/produk/baru?barcode=${encodeURIComponent(code)}`}>+ Buat produk baru dengan barcode ini</Link>} />
+      <div className="space-y-1.5">
+        <p className="text-sm font-semibold">① Barang baru, belum ada di toko sama sekali</p>
+        <Button render={<Link href={`/admin/produk/baru?barcode=${encodeURIComponent(code)}`}>+ Buat produk baru</Link>} />
+      </div>
       <div className="space-y-1.5">
         <p className="text-sm font-semibold">
-          …atau tambahkan sebagai varian baru (mis. shade lain) di produk yang sudah ada:
+          ② Shade / ukuran / warna lain dari produk yang sudah ada
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Mis. Lip Tint Glow 01 sudah diposting, sekarang scan yang 02 → pilih Lip Tint Glow.
         </p>
         <div className="flex flex-wrap gap-2">
           <select
