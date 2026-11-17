@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VariantInput, VariantRowValue } from "@/lib/variant-types";
+import { cleanBarcode } from "@/lib/barcode";
+import { lookupBarcode, type BarcodeMatch } from "@/lib/actions/barcode";
 
 type Row = {
   key: string;
@@ -13,6 +15,7 @@ type Row = {
   price: string; // digits only
   initialStock: string;
   initialCost: string; // digits only
+  barcode: string;
 };
 
 let keySeq = 0;
@@ -26,11 +29,12 @@ function toRow(v: VariantRowValue): Row {
     price: String(v.price),
     initialStock: "",
     initialCost: "",
+    barcode: v.barcode ?? "",
   };
 }
 
 function emptyRow(price = ""): Row {
-  return { key: newKey(), name: "", price, initialStock: "", initialCost: "" };
+  return { key: newKey(), name: "", price, initialStock: "", initialCost: "", barcode: "" };
 }
 
 const fmt = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -74,17 +78,40 @@ export function VariantEditor({
   type,
   isOwner,
   initial,
+  productId,
+  presetBarcode,
 }: {
   type: "READY" | "PO";
   isOwner: boolean;
   initial?: VariantRowValue[];
+  /** Product being edited, so its own barcodes aren't reported as taken. */
+  productId?: string;
+  /** Scanned code to put in (a new variant row of) this product. */
+  presetBarcode?: string;
 }) {
-  const [rows, setRows] = useState<Row[]>(() =>
-    initial && initial.length > 0 ? initial.map(toRow) : [emptyRow()]
-  );
+  const [rows, setRows] = useState<Row[]>(() => {
+    const base = initial && initial.length > 0 ? initial.map(toRow) : [emptyRow()];
+    if (!presetBarcode || base.some((r) => r.barcode === presetBarcode)) return base;
+    // New product: first row gets the code. Existing product: a new
+    // variant row (e.g. a new shade) carrying the scanned code.
+    if (!initial?.length) return [{ ...base[0], barcode: presetBarcode }];
+    return [...base, { ...emptyRow(base[base.length - 1]?.price ?? ""), barcode: presetBarcode }];
+  });
   const [hasOptions, setHasOptions] = useState(
-    () => (initial?.length ?? 0) > 1 || Boolean(initial?.[0]?.name)
+    () =>
+      (initial?.length ?? 0) > 1 ||
+      Boolean(initial?.[0]?.name) ||
+      Boolean(presetBarcode && initial?.length && !initial.some((v) => v.barcode === presetBarcode))
   );
+  // Barcode already used elsewhere in the shop, per row key.
+  const [taken, setTaken] = useState<Record<string, BarcodeMatch | null>>({});
+  const checkBarcode = async (row: Row) => {
+    const code = cleanBarcode(row.barcode);
+    if (!code) return setTaken((t) => ({ ...t, [row.key]: null }));
+    const m = await lookupBarcode(code);
+    const own = m && productId && m.productId === productId;
+    setTaken((t) => ({ ...t, [row.key]: m && !own ? m : null }));
+  };
   const [quickAdd, setQuickAdd] = useState("");
 
   const isReady = type === "READY";
@@ -100,6 +127,7 @@ export function VariantEditor({
     price: Number(r.price || 0),
     initialStock: isReady && !r.id && r.initialStock !== "" ? Number(r.initialStock) : null,
     initialCost: isOwner && !r.id && r.initialCost !== "" ? Number(r.initialCost) : null,
+    barcode: cleanBarcode(r.barcode) || null,
   }));
 
   function toggleOptions(on: boolean) {
@@ -198,6 +226,26 @@ export function VariantEditor({
               />
             </div>
 
+            <div className="space-y-1 sm:w-44">
+              <span className="text-xs text-muted-foreground">Barcode (opsional)</span>
+              <Input
+                aria-label={`Barcode ${row.name}`}
+                value={row.barcode}
+                inputMode="numeric"
+                placeholder="scan di sini"
+                onChange={(e) => update(row.key, { barcode: e.target.value })}
+                onBlur={() => checkBarcode(row)}
+                onKeyDown={(e) => {
+                  // A scanner types the code then presses Enter: check it,
+                  // don't submit the form.
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    checkBarcode({ ...row, barcode: e.currentTarget.value });
+                  }
+                }}
+              />
+            </div>
+
             {isReady && row.id && (
               <div className="space-y-1 sm:w-28">
                 <span className="text-xs text-muted-foreground">Stok sekarang</span>
@@ -229,6 +277,22 @@ export function VariantEditor({
                   onChange={(initialCost) => update(row.key, { initialCost })}
                 />
               </div>
+            )}
+
+            {taken[row.key] && (
+              <p className="col-span-2 basis-full text-sm font-semibold text-destructive">
+                Barcode ini sudah dipakai{" "}
+                <a
+                  href={`/admin/produk/${taken[row.key]!.productId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {taken[row.key]!.productName}
+                  {taken[row.key]!.variantName ? ` (${taken[row.key]!.variantName})` : ""}
+                </a>
+                . Kalau barangnya sama, tambah stok/varian di produk itu saja supaya tidak dobel.
+              </p>
             )}
 
             {hasOptions && rows.length > 1 && (

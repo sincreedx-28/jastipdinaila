@@ -10,6 +10,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { syncProductTotals } from "@/lib/product-stock";
 import { copyProduct } from "@/lib/product-copy";
 import type { VariantInput } from "@/lib/variant-types";
+import { cleanBarcode, isBarcode } from "@/lib/barcode";
 
 const PRODUCT_IMAGE_BUCKET = "product-images";
 
@@ -81,6 +82,7 @@ function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
       r.initialCost !== null && r.initialCost !== "" && r.initialCost !== undefined
         ? toInt(r.initialCost)
         : null,
+    barcode: cleanBarcode(String(r.barcode ?? "")) || null,
   }));
 
   if (rows.length > 50) throw new Error("Maksimal 50 varian per produk.");
@@ -88,7 +90,13 @@ function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
     throw new Error("Setiap varian wajib diberi nama (mis. ukuran atau warna).");
   }
   const seen = new Set<string>();
+  const codes = new Set<string>();
   for (const r of rows) {
+    if (r.barcode) {
+      if (!isBarcode(r.barcode)) throw new Error(`Barcode "${r.barcode}" tidak valid.`);
+      if (codes.has(r.barcode)) throw new Error(`Barcode ${r.barcode} dipakai dua kali di produk ini.`);
+      codes.add(r.barcode);
+    }
     const key = r.name.toLowerCase();
     if (seen.has(key)) throw new Error(`Nama varian "${r.name}" dobel.`);
     seen.add(key);
@@ -198,6 +206,23 @@ async function recordInitialStock(
   });
 }
 
+/** Each barcode belongs to one variant in the whole shop. */
+async function assertBarcodesFree(variants: VariantInput[], productId?: string) {
+  const codes = variants.map((v) => v.barcode).filter((c): c is string => Boolean(c));
+  if (!codes.length) return;
+  const taken = await prisma.productVariant.findMany({
+    where: { barcode: { in: codes }, ...(productId ? { productId: { not: productId } } : {}) },
+    include: { product: { select: { name: true } } },
+  });
+  if (taken.length) {
+    const t = taken[0];
+    throw new Error(
+      `Barcode ${t.barcode} sudah dipakai "${t.product.name}${t.name ? ` (${t.name})` : ""}". ` +
+        "Kalau barangnya sama, tambahkan stok/varian di produk itu saja supaya tidak dobel."
+    );
+  }
+}
+
 async function assertPoEvent(id: string | null) {
   if (id && !(await prisma.poEvent.findUnique({ where: { id }, select: { id: true } }))) {
     throw new Error("Batch PO tidak ditemukan, pilih ulang.");
@@ -219,6 +244,7 @@ export async function createProduct(
   try {
     const { fields, variants } = parseProductFields(formData);
     await assertPoEvent(fields.poEventId);
+    await assertBarcodesFree(variants);
     const slug = slugify(fields.name);
 
     const product = await prisma.$transaction(async (tx) => {
@@ -232,6 +258,7 @@ export async function createProduct(
             name: row.name,
             sortOrder: i,
             price: row.price,
+            barcode: row.barcode,
             stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
           },
         });
@@ -265,6 +292,7 @@ export async function updateProduct(
   try {
     const { fields, variants } = parseProductFields(formData);
     await assertPoEvent(fields.poEventId);
+    await assertBarcodesFree(variants, productId);
 
     await prisma.$transaction(async (tx) => {
       const existing = await tx.productVariant.findMany({ where: { productId } });
@@ -283,7 +311,10 @@ export async function updateProduct(
       // Two passes so renames that swap names (e.g. S↔M) don't trip the
       // unique (productId, name) index halfway through.
       for (const row of kept) {
-        await tx.productVariant.update({ where: { id: row.id }, data: { name: `__${row.id}` } });
+        await tx.productVariant.update({
+          where: { id: row.id },
+          data: { name: `__${row.id}`, barcode: null },
+        });
       }
       for (const [i, row] of variants.entries()) {
         if (row.id && keptIds.has(row.id)) {
@@ -294,6 +325,7 @@ export async function updateProduct(
               name: row.name,
               sortOrder: i,
               price: row.price,
+              barcode: row.barcode,
               // Switching READY ↔ PO: PO has no stock count; a product that
               // becomes READY starts from 0 until stock is added.
               stockQty: fields.type === "READY" ? before.stockQty ?? 0 : null,
@@ -306,6 +338,7 @@ export async function updateProduct(
               name: row.name,
               sortOrder: i,
               price: row.price,
+              barcode: row.barcode,
               stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
             },
           });

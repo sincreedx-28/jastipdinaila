@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addReadySale, deleteReadySale } from "@/lib/actions/rekap";
 import { rp } from "@/lib/rekap";
+import { cleanBarcode } from "@/lib/barcode";
+import { toast } from "sonner";
 import { BuyerPicker } from "./buyer-picker";
 import { Empty, Stepper, useRekapAction, useStoredChoice, type Buyer } from "./shared";
 
@@ -68,6 +70,7 @@ export function ReadyMode({ data, buyersById }: { data: RekapData; buyersById: M
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState("");
   const [q, setQ] = useState("");
+  const [scan, setScan] = useState("");
   const { pending, run } = useRekapAction();
 
 
@@ -93,6 +96,24 @@ export function ReadyMode({ data, buyersById }: { data: RekapData; buyersById: M
     setVariantId(p && p.variants.filter((v) => v.name).length ? (first?.id ?? "") : (p?.variants[0]?.id ?? ""));
     setQty(1);
     setPrice("");
+  };
+
+  // Scanner types the barcode + Enter: select that product and variant.
+  const onScan = (raw: string) => {
+    const code = cleanBarcode(raw);
+    setScan("");
+    if (!code) return;
+    for (const p of products) {
+      const v = p.variants.find((x) => x.barcode === code);
+      if (!v) continue;
+      setProductId(p.id);
+      setVariantId(v.id);
+      setQty(1);
+      setPrice("");
+      if (v.stockQty <= 0) toast.error(`${p.name}${v.name ? ` (${v.name})` : ""} stoknya habis.`);
+      return;
+    }
+    toast.error(`Barcode ${code} belum terdaftar di barang Ready Stock.`);
   };
 
   const save = () => {
@@ -205,6 +226,23 @@ export function ReadyMode({ data, buyersById }: { data: RekapData; buyersById: M
           <span className="text-sm font-semibold">Customer</span>
           <BuyerPicker buyers={data.buyers} value={buyer} onChange={setBuyer} />
         </div>
+
+        <label className="block space-y-1.5">
+          <span className="text-sm font-semibold">Scan barcode</span>
+          <Input
+            value={scan}
+            inputMode="numeric"
+            placeholder="arahkan scanner ke sini"
+            aria-label="Scan barcode"
+            onChange={(e) => setScan(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onScan(e.currentTarget.value);
+              }
+            }}
+          />
+        </label>
 
         <label className="block space-y-1.5">
           <span className="text-sm font-semibold">Barang</span>

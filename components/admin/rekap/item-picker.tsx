@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { rp, tidy, type RekapItem } from "@/lib/rekap";
+import { cleanBarcode, looksScanned } from "@/lib/barcode";
+import { toast } from "sonner";
 import type { CatalogEntry } from "./rekap-app";
 
 /** What was picked: a catalog product, or a name typed by hand. */
@@ -15,6 +17,8 @@ export type PickedItem = {
   image: string | null;
   variants: { name: string; price: number }[];
   price: number;
+  /** Variant found by scanning its barcode, to select right away. */
+  scannedVariant?: string;
 };
 
 export function Thumb({ src, name, size = 40 }: { src?: string | null; name: string; size?: number }) {
@@ -163,10 +167,28 @@ export function ItemPicker({
         onKeyDown={(e) => {
           if (e.key !== "Enter") return;
           e.preventDefault();
+          // Scanner: the barcode was typed in; pick that product + variant.
+          const code = cleanBarcode(q);
+          const hit = code ? catalog.find((p) => code in p.barcodes) : undefined;
+          if (hit) {
+            onChange({
+              name: hit.name,
+              productId: hit.id,
+              image: hit.image,
+              variants: hit.variants,
+              price: hit.price,
+              scannedVariant: hit.barcodes[code],
+            });
+            return;
+          }
+          if (looksScanned(q)) {
+            toast.error(`Barcode ${code} belum terdaftar di produk mana pun.`);
+            return;
+          }
           if (options[0] && tidy(q).length >= 2) onChange(options[0]);
           else if (tidy(q)) pickManual();
         }}
-        placeholder="Ketik 2 huruf nama barang"
+        placeholder="Ketik 2 huruf nama barang, atau scan"
         autoComplete="off"
         aria-label="Cari barang"
       />

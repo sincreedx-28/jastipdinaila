@@ -3,15 +3,30 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { duplicateProduct } from "@/lib/actions/products";
 import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { VisibilityToggle } from "@/components/admin/visibility-toggle";
 import { CategorySelect } from "@/components/admin/category-select";
 import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { formatPriceRange } from "@/lib/variant-types";
+import { cleanBarcode, isBarcode, looksScanned } from "@/lib/barcode";
+import { UnknownBarcode } from "@/components/admin/unknown-barcode";
+import { SearchBox } from "@/components/admin/search-box";
+import { poEventSelect } from "@/lib/shop-visibility";
+import { toEventInfo } from "@/lib/po-event-info";
+import { eventState } from "@/lib/po-event-state";
 
-type Search = { q?: string; tipe?: string; status?: string; stok?: string; grup?: string };
+type Search = {
+  q?: string;
+  tipe?: string;
+  status?: string;
+  stok?: string;
+  grup?: string;
+  /** PO Event id, or "none" for PO without a batch. */
+  batch?: string;
+  /** "batch" groups the list per PO Event instead of per category. */
+  kelompok?: string;
+};
 
 const NO_GROUP = "Belum dikategorikan";
 
@@ -24,14 +39,21 @@ export default async function AdminProductsPage({
   const q = sp.q?.trim() ?? "";
 
   const where: Prisma.ProductWhereInput = {};
+  const scanned = q ? cleanBarcode(q) : "";
   if (q) {
     where.OR = [
       { name: { contains: q, mode: "insensitive" } },
       { group: { contains: q, mode: "insensitive" } },
       { category: { contains: q, mode: "insensitive" } },
+      // A scanner types the barcode into this same search box.
+      ...(isBarcode(scanned) ? [{ variants: { some: { barcode: scanned } } }] : []),
     ];
   }
   if (sp.grup) where.group = sp.grup === NO_GROUP ? null : sp.grup;
+  if (sp.batch) {
+    where.type = "PO";
+    where.poEventId = sp.batch === "none" ? null : sp.batch;
+  }
   if (sp.tipe === "READY" || sp.tipe === "PO") where.type = sp.tipe;
   if (sp.status === "sembunyi") where.isActive = false;
   if (sp.stok === "menipis") {
@@ -39,14 +61,14 @@ export default async function AdminProductsPage({
     where.variants = { some: { stockQty: { lte: 3 } } };
   }
 
-  const [products, totalCount, allGroups] = await Promise.all([
+  const [products, totalCount, allGroups, events] = await Promise.all([
     prisma.product.findMany({
       where,
       include: {
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
         poEvent: { select: { name: true } },
         variants: {
-          select: { name: true, price: true, stockQty: true },
+          select: { name: true, price: true, stockQty: true, barcode: true },
           orderBy: { sortOrder: "asc" },
         },
       },
@@ -54,22 +76,58 @@ export default async function AdminProductsPage({
     }),
     prisma.product.count(),
     prisma.product.findMany({ select: { group: true }, distinct: ["group"] }),
+    prisma.poEvent.findMany({ select: poEventSelect, orderBy: { createdAt: "desc" } }),
   ]);
+  const eventInfos = events.map(toEventInfo);
+  const byBatch = sp.kelompok === "batch" || (sp.kelompok !== "kategori" && (sp.tipe === "PO" || Boolean(sp.batch)));
 
-  const groups = new Map<string, typeof products>();
-  for (const p of products) {
-    const g = p.group?.trim() || NO_GROUP;
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g)!.push(p);
-  }
+  type Section = { key: string; title: string; sub?: string; addHref?: string; items: typeof products };
+  const sections: Section[] = [];
   const byName = (a: string, b: string) =>
     a === NO_GROUP ? 1 : b === NO_GROUP ? -1 : a.localeCompare(b, "id");
-  const groupNames = [...groups.keys()].sort(byName);
+  if (byBatch) {
+    // Per PO Event: open/soon/closed first, archived last, then PO without a
+    // batch, then Ready Stock.
+    const rank = { open: 0, soon: 1, closed: 2, archived: 3 } as const;
+    const evs = [...eventInfos].sort((a, b) => rank[eventState(a)] - rank[eventState(b)]);
+    for (const e of evs) {
+      const items = products.filter((p) => p.type === "PO" && p.poEventId === e.id);
+      if (!items.length && (sp.batch !== e.id)) continue;
+      const st = eventState(e);
+      sections.push({
+        key: e.id,
+        title: e.name,
+        sub: { open: "order dibuka", soon: "belum dibuka", closed: "order ditutup", archived: "diarsipkan" }[st],
+        addHref: `/admin/produk/baru?batch=${e.id}`,
+        items,
+      });
+    }
+    const loose = products.filter((p) => p.type === "PO" && !p.poEventId);
+    if (loose.length) sections.push({ key: "po-none", title: "PO tanpa batch", items: loose });
+    const ready = products.filter((p) => p.type === "READY");
+    if (ready.length) sections.push({ key: "ready", title: "Ready Stock", items: ready });
+  } else {
+    const groups = new Map<string, typeof products>();
+    for (const p of products) {
+      const g = p.group?.trim() || NO_GROUP;
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g)!.push(p);
+    }
+    for (const g of [...groups.keys()].sort(byName)) {
+      sections.push({
+        key: g,
+        title: g,
+        addHref: g !== NO_GROUP ? `/admin/produk/baru?grup=${encodeURIComponent(g)}` : undefined,
+        items: groups.get(g)!,
+      });
+    }
+  }
+  const groupNames = sections.map((x) => x.key);
   const groupOptions = [...new Set(allGroups.map((g) => g.group?.trim() || NO_GROUP))].sort(
     byName
   );
 
-  const filtered = Boolean(q || sp.tipe || sp.status || sp.stok || sp.grup);
+  const filtered = Boolean(q || sp.tipe || sp.status || sp.stok || sp.grup || sp.batch);
   const hrefWith = (patch: Partial<Search>) => {
     const next = { ...sp, ...patch };
     const params = new URLSearchParams();
@@ -97,19 +155,28 @@ export default async function AdminProductsPage({
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-          <Input
-            name="q"
-            type="search"
-            defaultValue={q}
-            placeholder="Cari produk di semua kategori"
-            className="rounded-full!"
-          />
+          <SearchBox defaultValue={q} />
         </form>
         <Button render={<Link href="/admin/produk/baru">+ Produk baru</Link>} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <CategorySelect options={groupOptions} value={sp.grup ?? ""} hrefFor={groupHrefs} />
+        {eventInfos.length > 0 && (
+          <CategorySelect
+            label="Batch PO"
+            allLabel="Semua batch PO"
+            options={[...eventInfos.map((e) => e.id), "none"]}
+            optionLabels={Object.fromEntries([
+              ...eventInfos.map((e) => [e.id, e.archived ? `${e.name} (arsip)` : e.name]),
+              ["none", "PO tanpa batch"],
+            ])}
+            value={sp.batch ?? ""}
+            hrefFor={Object.fromEntries(
+              ["", ...eventInfos.map((e) => e.id), "none"].map((b) => [b, hrefWith({ batch: b || undefined })])
+            )}
+          />
+        )}
         {chip(
           "Semua",
           allShelves,
@@ -129,8 +196,27 @@ export default async function AdminProductsPage({
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Kelompokkan:</span>
+        <Link
+          href={hrefWith({ kelompok: "kategori" })}
+          className="pill min-h-8! px-3! text-xs!"
+          data-active={!byBatch}
+        >
+          Per kategori
+        </Link>
+        <Link
+          href={hrefWith({ kelompok: "batch" })}
+          className="pill min-h-8! px-3! text-xs!"
+          data-active={byBatch}
+        >
+          Per batch PO
+        </Link>
+      </div>
+
       <p className="text-sm text-muted-foreground">
-        {products.length} dari {totalCount} produk · {groupNames.length} kategori
+        {products.length} dari {totalCount} produk · {groupNames.length}{" "}
+        {byBatch ? "kelompok" : "kategori"}
         {filtered && (
           <>
             {" · "}
@@ -141,21 +227,50 @@ export default async function AdminProductsPage({
         )}
       </p>
 
-      {products.length === 0 && (
-        <p className="box p-8 text-center text-muted-foreground">
-          {filtered ? "Tidak ada produk yang cocok." : "Belum ada produk."}
-        </p>
+      {(() => {
+        const hit = isBarcode(scanned)
+          ? products.flatMap((p) => p.variants.filter((v) => v.barcode === scanned).map((v) => ({ p, v })))[0]
+          : undefined;
+        return hit ? (
+          <p className="soft-note">
+            Barcode <b>{scanned}</b> = <b>{hit.p.name}</b>
+            {hit.v.name ? ` (${hit.v.name})` : ""}
+            {hit.p.type === "READY" && ` · stok ${hit.v.stockQty ?? 0}`} ·{" "}
+            <Link href={`/admin/produk/${hit.p.id}`} className="font-bold underline">
+              Buka produk
+            </Link>
+          </p>
+        ) : null;
+      })()}
+      {products.length === 0 && looksScanned(q) ? (
+        <UnknownBarcode
+          code={scanned}
+          products={await prisma.product.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+          })}
+        />
+      ) : (
+        products.length === 0 && (
+          <p className="box p-8 text-center text-muted-foreground">
+            {filtered ? "Tidak ada produk yang cocok." : "Belum ada produk."}
+          </p>
+        )
       )}
 
-      {groupNames.map((g) => {
-        const list = groups.get(g)!;
+      {sections.map((sec) => {
+        const list = sec.items;
         const poCount = list.filter((p) => p.type === "PO").length;
         return (
-          <details key={g} open className="box group/box px-4">
+          // Archived batches start folded so the active ones stay in view.
+          <details key={sec.key} open={sec.sub !== "diarsipkan"} className="box group/box px-4">
             <summary className="flex cursor-pointer list-none items-center gap-3 py-4 [&::-webkit-details-marker]:hidden">
-              <span className="font-heading text-lg">{g}</span>
-              <span className="ml-auto text-sm text-muted-foreground">
-                {list.length} produk{poCount > 0 && ` · ${poCount} PO`}
+              <span className="min-w-0">
+                <span className="font-heading text-lg">{sec.title}</span>
+                {sec.sub && <span className="block text-xs text-muted-foreground">{sec.sub}</span>}
+              </span>
+              <span className="ml-auto shrink-0 text-sm text-muted-foreground">
+                {list.length} produk{!byBatch && poCount > 0 && ` · ${poCount} PO`}
               </span>
               <svg
                 aria-hidden
@@ -165,7 +280,7 @@ export default async function AdminProductsPage({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2.5"
-                className="transition-transform group-open/box:rotate-180"
+                className="shrink-0 transition-transform group-open/box:rotate-180"
               >
                 <path d="M6 15l6-6 6 6" />
               </svg>
@@ -202,7 +317,7 @@ export default async function AdminProductsPage({
                       </Link>
                       <p className="text-sm text-muted-foreground">
                         {p.type === "READY" ? "Ready" : "PO"}
-                        {p.poEvent && ` · ${p.poEvent.name}`}
+                        {p.poEvent && !byBatch && ` · ${p.poEvent.name}`}
                         {p.category && ` · ${p.category}`}
                         {p.type === "READY" && (
                           <span
@@ -244,12 +359,12 @@ export default async function AdminProductsPage({
                 );
               })}
             </ul>
-            {g !== NO_GROUP && (
+            {sec.addHref && (
               <Link
-                href={`/admin/produk/baru?grup=${encodeURIComponent(g)}`}
+                href={sec.addHref}
                 className="block border-t py-3 text-sm font-bold text-primary hover:underline"
               >
-                + Tambah produk di {g}
+                + Tambah produk di {sec.title}
               </Link>
             )}
           </details>

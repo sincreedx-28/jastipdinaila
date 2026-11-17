@@ -74,7 +74,7 @@ function Fields({ v, set }: { v: PoEventInput; set: (p: Partial<PoEventInput>) =
         {field("Order ditutup (close)", <Input type="date" value={v.closeDate} onChange={(e) => set({ closeDate: e.target.value })} />)}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {field("Estimasi barang ready", <Input type="date" value={v.etaDate} onChange={(e) => set({ etaDate: e.target.value })} />)}
+        {field("Estimasi barang tiba (ETA)", <Input type="date" value={v.etaDate} onChange={(e) => set({ etaDate: e.target.value })} />)}
         {field("…atau tulis estimasinya", <Input value={v.etaNote} onChange={(e) => set({ etaNote: e.target.value })} placeholder="mis. akhir Desember" />, "(opsional)")}
       </div>
       {field(
@@ -82,8 +82,13 @@ function Fields({ v, set }: { v: PoEventInput; set: (p: Partial<PoEventInput>) =
         <Textarea rows={3} value={v.note} onChange={(e) => set({ note: e.target.value })} placeholder="mis. DP 50%, pelunasan saat barang tiba" />,
         "(opsional)"
       )}
+      {v.etaDate && v.closeDate && v.etaDate < v.closeDate && (
+        <p className="text-sm font-semibold text-amber-700">
+          Estimasi tiba lebih awal dari tanggal close order. Pastikan tanggalnya sudah benar.
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
-        Periode order dan estimasi ready tampil di atas produk batch ini di halaman Pre-Order toko.
+        Periode order dan estimasi tiba tampil di atas produk batch ini di halaman Pre-Order toko.
         Setelah tanggal close lewat, produknya otomatis tidak bisa dipesan lagi.
       </p>
     </div>
@@ -242,7 +247,7 @@ export function PoEventManager({ events }: { events: EventRow[] }) {
             <b className="text-lg">{e.name}</b>
             {e.place && <span className="text-muted-foreground"> · {e.place}</span>}
             <p className="text-sm text-muted-foreground">
-              Order {periodText(e)} · ready {etaText(e)}
+              Order {periodText(e)} · tiba {etaText(e)}
             </p>
             <p className="text-sm text-muted-foreground">
               {e.productCount} produk ·{" "}
