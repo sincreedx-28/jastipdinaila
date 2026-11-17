@@ -15,7 +15,7 @@ async function getAllProducts() {
     where: shopVisible,
     include: {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },
-      variants: { select: { price: true } },
+      variants: { select: { price: true, imageUrl: true }, orderBy: { sortOrder: "asc" } },
       poEvent: { select: poEventSelect },
     },
     orderBy: { createdAt: "desc" },
@@ -86,7 +86,7 @@ export default async function ProductsPage({
     price: p.price,
     priceMax: Math.max(p.price, ...p.variants.map((v) => v.price)),
     stockQty: p.stockQty,
-    imageUrl: p.images[0]?.url ?? null,
+    imageUrl: p.images[0]?.url ?? p.variants.find((v) => v.imageUrl)?.imageUrl ?? null,
     category: p.category,
   });
 

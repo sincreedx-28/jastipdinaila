@@ -83,6 +83,7 @@ export default async function EditProductPage({
             price: v.price,
             stockQty: v.stockQty,
             barcode: v.barcode,
+            imageUrl: v.imageUrl,
           })),
         }}
       />

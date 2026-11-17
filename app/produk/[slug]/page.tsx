@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
-import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { formatPriceRange } from "@/lib/variant-types";
 import { poEventSelect, shopVisible } from "@/lib/shop-visibility";
 import { toEventInfo } from "@/lib/po-event-info";
 import { eventState, fmtDay } from "@/lib/po-event-state";
 import { PoEventHeader } from "@/components/storefront/po-event-header";
+import { ProductGallery } from "@/components/storefront/product-gallery";
+import { VariantSelectionProvider } from "@/components/storefront/variant-selection";
 
 export default async function ProductDetailPage({
   params,
@@ -41,7 +41,10 @@ export default async function ProductDetailPage({
   const prices = product.variants.map((v) => v.price);
   const minPrice = prices.length ? Math.min(...prices) : product.price;
   const maxPrice = prices.length ? Math.max(...prices) : product.price;
-  const mainImage = product.images[0]?.url ?? null;
+  const mainImage = product.images[0]?.url ?? product.variants.find((v) => v.imageUrl)?.imageUrl ?? null;
+  const inStock = (v: (typeof product.variants)[number]) =>
+    product.type !== "READY" || (v.stockQty ?? 0) > 0;
+  const firstId = (product.variants.find(inStock) ?? product.variants[0])?.id ?? null;
 
   return (
     // max-sm padding = height of the buy bar pinned to the bottom on phones
@@ -52,28 +55,15 @@ export default async function ProductDetailPage({
         <Link href="/produk" className="mb-5 inline-block text-sm font-bold text-foreground">
           ← Back to Catalog
         </Link>
+        <VariantSelectionProvider initialId={firstId}>
         <div className="grid gap-8 md:grid-cols-2">
-        <div className="space-y-3">
-          <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-            {mainImage ? (
-              <Image src={mainImage} alt={product.name} fill className="object-cover" />
-            ) : (
-              <ProductPlaceholder name={product.name} size="lg" />
-            )}
-          </div>
-          {product.images.length > 1 && (
-            <div className="flex gap-2">
-              {product.images.slice(1).map((img) => (
-                <div
-                  key={img.id}
-                  className="relative h-16 w-16 overflow-hidden rounded bg-muted"
-                >
-                  <Image src={img.url} alt="" fill className="object-cover" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery
+          name={product.name}
+          images={product.images.map((i) => i.url)}
+          variants={product.variants
+            .filter((v) => v.name)
+            .map((v) => ({ id: v.id, name: v.name, imageUrl: v.imageUrl, available: inStock(v) }))}
+        />
 
         <div className="space-y-4">
           <div>
@@ -114,6 +104,7 @@ export default async function ProductDetailPage({
               name: v.name,
               price: v.price,
               stockQty: product.type === "READY" ? v.stockQty ?? 0 : null,
+              imageUrl: v.imageUrl,
             }))}
             product={{
               productId: product.id,
@@ -129,6 +120,7 @@ export default async function ProductDetailPage({
           />
         </div>
         </div>
+        </VariantSelectionProvider>
       </main>
       <SiteFooter />
     </div>
