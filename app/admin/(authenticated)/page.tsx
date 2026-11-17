@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ORDER_STATUS_LABELS, orderStatusClass } from "@/lib/order-status";
+import { getCurrentAdmin } from "@/lib/admin-auth";
+import { buildInventory } from "@/lib/inventory";
+import { rp } from "@/lib/rekap";
 
 export default async function AdminDashboardPage() {
   const [productCount, paidOrders, unpaidOrders, lowStock, recentOrders, waPending] = await Promise.all([
@@ -11,6 +14,9 @@ export default async function AdminDashboardPage() {
     prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.waOrder.count({ where: { status: "PENDING" } }),
   ]);
+  // Money tied up in stock is owner-only.
+  const admin = await getCurrentAdmin();
+  const inv = admin?.isSuperAdmin ? await buildInventory() : null;
 
   const stats = [
     { label: "Perlu diproses (sudah bayar)", value: paidOrders, href: "/admin/pesanan?status=PAID", strong: true },
@@ -52,6 +58,24 @@ export default async function AdminDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {inv && (
+        <Link
+          href="/admin/laporan#stok"
+          className="flex items-center justify-between gap-3 rounded-2xl border bg-background p-4 hover:bg-secondary"
+        >
+          <span>
+            <span className="block text-sm text-muted-foreground">
+              Nilai stok Ready sekarang (modal) · {inv.pcs} pcs
+            </span>
+            <b className="font-heading text-2xl text-primary tabular-nums">{rp(inv.modal)}</b>
+            {inv.noCostPcs > 0 && (
+              <span className="block text-xs text-amber-800">{inv.noCostPcs} pcs belum ada modalnya</span>
+            )}
+          </span>
+          <span className="shrink-0 text-sm font-bold text-primary">Rincian →</span>
+        </Link>
+      )}
 
       <section className="box">
         <div className="flex items-center justify-between px-4 py-3">

@@ -120,3 +120,49 @@ export async function correctStock(
         : `Stok dikoreksi jadi ${actual} pcs (${result.delta > 0 ? "+" : ""}${result.delta}).`,
   };
 }
+
+/**
+ * "Isi / ubah modal": set the average purchase cost of stock already on the
+ * shelf, e.g. stock entered before costs were tracked, or a cost typed
+ * wrongly. The count doesn't change. Owner only.
+ */
+export async function setAvgCost(
+  variantId: string,
+  _prev: StockFormState,
+  formData: FormData
+): Promise<StockFormState> {
+  const admin = await requireAdminAction();
+  if (!admin.isSuperAdmin) return { error: "Hanya owner yang bisa mengubah modal." };
+
+  const cost = readInt(formData, "avgCost");
+  const note = String(formData.get("note") ?? "").trim().slice(0, 200) || null;
+  if (!Number.isFinite(cost) || cost <= 0 || cost > 1_000_000_000) {
+    return { error: "Isi harga beli per pcs." };
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const v = await lockVariant(tx, variantId);
+    if (!v || v.product.type !== "READY") return null;
+    await tx.productVariant.update({ where: { id: variantId }, data: { avgCost: cost } });
+    await tx.stockMovement.create({
+      data: {
+        variantId,
+        type: "ADJUSTMENT",
+        qty: 0,
+        unitCost: cost,
+        stockAfter: v.stockQty ?? 0,
+        avgCostAfter: cost,
+        note: note ?? (v.avgCost === null ? "Modal diisi" : `Modal diubah dari Rp${v.avgCost.toLocaleString("id-ID")}`),
+        adminUserId: admin.id,
+        adminName: admin.name,
+      },
+    });
+    return { productId: v.productId };
+  });
+  if (!result) return { error: "Varian tidak ditemukan." };
+
+  revalidateStock(result.productId);
+  revalidatePath("/admin/laporan");
+  revalidatePath("/admin");
+  return { ok: `Modal jadi Rp${cost.toLocaleString("id-ID")}/pcs.` };
+}
