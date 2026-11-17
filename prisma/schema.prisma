@@ -343,6 +343,10 @@ model PoEvent {
   etaNote   String?
   note      String?
 
+  /// Owner-only trip costs (baggage, transport, …) taken off this batch's
+  /// profit: [{ label, amount }]. Never selected for the shop.
+  tripCosts Json @default("[]")
+
   items    PoItem[]
   orders   PoOrder[]
   products Product[]

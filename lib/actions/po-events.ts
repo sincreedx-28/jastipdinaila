@@ -124,3 +124,19 @@ export async function duplicatePoEvent(
   revalidate();
   return { ok: true, id: ev.id, copied };
 }
+
+/** Owner only: trip costs (baggage, transport, …) of a batch, for the report. */
+export async function saveTripCosts(
+  id: string,
+  costs: { label: string; amount: number }[]
+): Promise<PoEventResult> {
+  const admin = await requireAdminAction();
+  if (!admin.isSuperAdmin) return fail("Hanya owner yang bisa mengisi biaya trip.");
+  if (!Array.isArray(costs) || costs.length > 30) return fail("Data biaya tidak valid.");
+  const clean = costs
+    .map((c) => ({ label: tidy(String(c.label ?? "")).slice(0, 60), amount: Math.max(0, Math.round(Number(c.amount) || 0)) }))
+    .filter((c) => c.amount > 0);
+  await prisma.poEvent.update({ where: { id }, data: { tripCosts: clean } });
+  revalidatePath("/admin/laporan");
+  return { ok: true };
+}
