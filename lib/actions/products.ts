@@ -11,6 +11,7 @@ import { syncProductTotals } from "@/lib/product-stock";
 import { copyProduct } from "@/lib/product-copy";
 import type { VariantInput } from "@/lib/variant-types";
 import { cleanBarcode, isBarcode } from "@/lib/barcode";
+import { sniffImageType } from "@/lib/image-sniff";
 
 const PRODUCT_IMAGE_BUCKET = "product-images";
 
@@ -54,6 +55,40 @@ async function uploadProductImages(productId: string, files: File[]) {
   return uploaded;
 }
 
+/** Only photos in our own Storage bucket may be linked to a variant. */
+function cleanVariantImage(v: unknown): string | null {
+  const url = typeof v === "string" ? v.trim() : "";
+  if (!url) return null;
+  const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${PRODUCT_IMAGE_BUCKET}/`;
+  return url.startsWith(prefix) && url.length < 500 ? url : null;
+}
+
+/**
+ * Uploads one variant photo right when it's picked (so a product with many
+ * shades never sends all photos in one big request) and returns its URL.
+ * The URL is saved with the variant when the product form is saved.
+ */
+export async function uploadVariantPhoto(
+  formData: FormData
+): Promise<{ url: string } | { error: string }> {
+  await requireAdminAction();
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { error: "Pilih foto dulu." };
+  if (file.size > 3 * 1024 * 1024) return { error: "Foto terlalu besar (maks 3MB)." };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffImageType(bytes);
+  if (!type) return { error: "File harus foto (JPEG, PNG, WebP, atau GIF)." };
+
+  const supabase = await createClient();
+  const path = `variants/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${type.ext}`;
+  const { error } = await supabase.storage
+    .from(PRODUCT_IMAGE_BUCKET)
+    .upload(path, bytes, { upsert: false, contentType: type.mime });
+  if (error) return { error: `Gagal upload foto: ${error.message}` };
+  const { data } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl };
+}
+
 function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
   let raw: unknown;
   try {
@@ -83,6 +118,7 @@ function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
         ? toInt(r.initialCost)
         : null,
     barcode: cleanBarcode(String(r.barcode ?? "")) || null,
+    imageUrl: cleanVariantImage(r.imageUrl),
   }));
 
   if (rows.length > 50) throw new Error("Maksimal 50 varian per produk.");
@@ -259,6 +295,7 @@ export async function createProduct(
             sortOrder: i,
             price: row.price,
             barcode: row.barcode,
+            imageUrl: row.imageUrl ?? null,
             stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
           },
         });
@@ -326,6 +363,7 @@ export async function updateProduct(
               sortOrder: i,
               price: row.price,
               barcode: row.barcode,
+              imageUrl: row.imageUrl ?? null,
               // Switching READY ↔ PO: PO has no stock count; a product that
               // becomes READY starts from 0 until stock is added.
               stockQty: fields.type === "READY" ? before.stockQty ?? 0 : null,
@@ -339,6 +377,7 @@ export async function updateProduct(
               sortOrder: i,
               price: row.price,
               barcode: row.barcode,
+              imageUrl: row.imageUrl ?? null,
               stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
             },
           });

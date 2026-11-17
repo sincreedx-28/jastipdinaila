@@ -324,7 +324,14 @@ export async function publishItemToCatalog(
         poEventId: item.eventId,
         legacyVariants: named.map((r) => r.variant),
         variants: {
-          create: rows.map((r, i) => ({ name: r.variant, sortOrder: i, price: r.price, stockQty: null })),
+          // Each line's photo becomes that variant's photo (e.g. per shade).
+          create: rows.map((r, i) => ({
+            name: r.variant,
+            sortOrder: i,
+            price: r.price,
+            stockQty: null,
+            imageUrl: named.length ? r.imageUrl : null,
+          })),
         },
         images: image ? { create: { url: image, sortOrder: 0 } } : undefined,
       },

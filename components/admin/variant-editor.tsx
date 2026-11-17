@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import type { VariantInput, VariantRowValue } from "@/lib/variant-types";
 import { cleanBarcode } from "@/lib/barcode";
 import { lookupBarcode, type BarcodeMatch } from "@/lib/actions/barcode";
+import { uploadVariantPhoto } from "@/lib/actions/products";
+import { compressImage } from "@/lib/compress-image";
 
 type Row = {
   key: string;
@@ -16,6 +18,7 @@ type Row = {
   initialStock: string;
   initialCost: string; // digits only
   barcode: string;
+  imageUrl: string;
 };
 
 let keySeq = 0;
@@ -30,11 +33,12 @@ function toRow(v: VariantRowValue): Row {
     initialStock: "",
     initialCost: "",
     barcode: v.barcode ?? "",
+    imageUrl: v.imageUrl ?? "",
   };
 }
 
 function emptyRow(price = ""): Row {
-  return { key: newKey(), name: "", price, initialStock: "", initialCost: "", barcode: "" };
+  return { key: newKey(), name: "", price, initialStock: "", initialCost: "", barcode: "", imageUrl: "" };
 }
 
 const fmt = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -63,6 +67,82 @@ function MoneyInput({
         placeholder={placeholder ?? "0"}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
       />
+    </div>
+  );
+}
+
+/**
+ * Square photo slot of one variant row. On a phone, tapping it offers the
+ * camera or the gallery. The photo is shrunk and uploaded right away; only
+ * its URL is saved with the product.
+ */
+function VariantPhoto({
+  url,
+  label,
+  onChange,
+}: {
+  url: string;
+  label: string;
+  onChange: (url: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const fd = new FormData();
+      fd.set("image", await compressImage(file));
+      const res = await uploadVariantPhoto(fd);
+      if ("error" in res) setErr(res.error);
+      else onChange(res.url);
+    } catch {
+      setErr("Gagal upload, coba lagi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="flex-none space-y-1">
+      <span className="text-xs text-muted-foreground">Foto</span>
+      <div className="relative h-11 w-11">
+        <label
+          className="flex h-11 w-11 cursor-pointer items-center justify-center overflow-hidden rounded-xl border bg-background text-lg"
+          title={url ? "Ganti foto" : "Tambah foto"}
+        >
+          {busy ? (
+            <span className="text-[10px] font-semibold text-muted-foreground">…</span>
+          ) : url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span aria-hidden>📷</span>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            aria-label={`Foto ${label}`}
+            className="sr-only"
+            disabled={busy}
+            onChange={(e) => {
+              pick(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {url && !busy && (
+          <button
+            type="button"
+            aria-label={`Hapus foto ${label}`}
+            onClick={() => onChange("")}
+            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-background text-[11px] font-bold leading-none"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {err && <p className="max-w-40 text-xs text-destructive">{err}</p>}
     </div>
   );
 }
@@ -127,7 +207,8 @@ export function VariantEditor({
 
   // Untouched extra rows (no name, barcode or stock typed) are just left-over
   // placeholders: skip them instead of failing with "nama varian wajib".
-  const isBlank = (r: Row) => !r.id && !r.name.trim() && !r.barcode.trim() && !r.initialStock && !r.initialCost;
+  const isBlank = (r: Row) =>
+    !r.id && !r.name.trim() && !r.barcode.trim() && !r.initialStock && !r.initialCost && !r.imageUrl;
   const used = hasOptions ? rows.filter((r, i) => i === 0 || !isBlank(r)) : rows.slice(0, 1);
   const payload: VariantInput[] = used.map((r) => ({
     id: r.id,
@@ -136,6 +217,7 @@ export function VariantEditor({
     initialStock: isReady && !r.id && r.initialStock !== "" ? Number(r.initialStock) : null,
     initialCost: isOwner && !r.id && r.initialCost !== "" ? Number(r.initialCost) : null,
     barcode: cleanBarcode(r.barcode) || null,
+    imageUrl: hasOptions ? r.imageUrl || null : null,
   }));
 
   function toggleOptions(on: boolean) {
@@ -233,7 +315,7 @@ export function VariantEditor({
       </fieldset>
       <p className="text-xs text-muted-foreground">
         {hasOptions
-          ? "Nama produk = judul umum (mis. Lip Tint Glow). Nama varian = pembedanya (mis. 01 Peach, 02 Rose). Tiap varian boleh beda harga & punya barcode sendiri, tapi tetap tampil sebagai 1 produk di toko."
+          ? "Nama produk = judul umum (mis. Lip Tint Glow). Nama varian = pembedanya (mis. 01 Peach, 02 Rose). Tiap varian boleh beda harga, punya barcode & foto sendiri (📷, opsional), tapi tetap tampil sebagai 1 produk di toko."
           : "Harga jual = harga final yang dilihat pelanggan, fee jastip sudah termasuk."}
       </p>
 
@@ -244,15 +326,22 @@ export function VariantEditor({
             className="relative grid grid-cols-2 items-end gap-2 rounded-xl bg-secondary/60 p-3 sm:flex sm:flex-wrap sm:pr-12"
           >
             {hasOptions && (
-              <div className="col-span-2 space-y-1 pr-10 sm:w-40 sm:pr-0">
-                <span className="text-xs text-muted-foreground">Nama varian</span>
-                <Input
-                  aria-label="Nama varian"
-                  value={row.name}
-                  autoFocus={scannedExisting && !row.id && row.barcode === presetBarcode}
-                  placeholder="mis. 01 Peach / M"
-                  onChange={(e) => update(row.key, { name: e.target.value })}
+              <div className="col-span-2 flex items-start gap-2 pr-10 sm:pr-0">
+                <VariantPhoto
+                  url={row.imageUrl}
+                  label={row.name || "varian"}
+                  onChange={(imageUrl) => update(row.key, { imageUrl })}
                 />
+                <div className="min-w-0 flex-1 space-y-1 sm:w-40 sm:flex-none">
+                  <span className="text-xs text-muted-foreground">Nama varian</span>
+                  <Input
+                    aria-label="Nama varian"
+                    value={row.name}
+                    autoFocus={scannedExisting && !row.id && row.barcode === presetBarcode}
+                    placeholder="mis. 01 Peach / M"
+                    onChange={(e) => update(row.key, { name: e.target.value })}
+                  />
+                </div>
               </div>
             )}
             <div className="space-y-1 sm:w-36">

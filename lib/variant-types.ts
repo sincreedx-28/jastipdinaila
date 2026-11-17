@@ -13,6 +13,8 @@ export type VariantInput = {
   initialCost?: number | null;
   /** Barcode on this variant's packaging; "" / null when it has none. */
   barcode?: string | null;
+  /** Uploaded photo of this variant (public Storage URL); null for none. */
+  imageUrl?: string | null;
 };
 
 export type VariantRowValue = {
@@ -21,6 +23,7 @@ export type VariantRowValue = {
   price: number;
   stockQty: number | null;
   barcode?: string | null;
+  imageUrl?: string | null;
 };
 
 /** "Rp12.000" or "Rp12.000 – Rp15.000" for a price range. */

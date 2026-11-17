@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCartStore, type CartItem } from "@/lib/store/cart";
 import { Button } from "@/components/ui/button";
+import { useVariantSelection } from "@/components/storefront/variant-selection";
 
 export type BuyVariant = {
   id: string;
@@ -12,6 +13,8 @@ export type BuyVariant = {
   price: number;
   /** null = not stock-limited (Pre-Order). */
   stockQty: number | null;
+  /** This variant's own photo, if any. */
+  imageUrl?: string | null;
 };
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
@@ -30,9 +33,13 @@ export function AddToCartButton({
 }) {
   const available = (v: BuyVariant) => v.stockQty === null || v.stockQty > 0;
   const [qty, setQty] = useState(1);
-  const [selectedId, setSelectedId] = useState<string | null>(
+  const [localId, setLocalId] = useState<string | null>(
     () => (variants.find(available) ?? variants[0])?.id ?? null
   );
+  // On the product page the choice is shared with the photo gallery.
+  const shared = useVariantSelection();
+  const selectedId = shared ? shared.selectedId : localId;
+  const setSelectedId = shared ? shared.select : setLocalId;
   const addItem = useCartStore((s) => s.addItem);
   const router = useRouter();
 
@@ -46,6 +53,7 @@ export function AddToCartButton({
     price: selected.price,
     variant: selected.name || null,
     variantId: selected.id,
+    imageUrl: selected.imageUrl ?? product.imageUrl,
   });
 
   if (soldOut || !selected) {
@@ -75,16 +83,24 @@ export function AddToCartButton({
                     if (v.stockQty !== null) setQty((q) => Math.min(q, Math.max(1, v.stockQty!)));
                   }}
                   aria-pressed={active}
-                  className={`min-h-11 rounded-lg border px-4.5 py-2 text-sm font-bold ${
+                  className={`flex min-h-11 items-center gap-2 rounded-lg border py-1.5 text-sm font-bold ${
+                    v.imageUrl ? "pl-1.5 pr-4" : "px-4.5"
+                  } ${
                     active
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-background text-foreground"
                   } ${out ? "cursor-not-allowed opacity-40 line-through" : ""}`}
                 >
-                  {v.name}
-                  {pricesDiffer && (
-                    <span className="block text-[11px] font-semibold opacity-80">{rp(v.price)}</span>
+                  {v.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={v.imageUrl} alt="" className="h-8 w-8 flex-none rounded-md object-cover" />
                   )}
+                  <span className="text-left">
+                    {v.name}
+                    {pricesDiffer && (
+                      <span className="block text-[11px] font-semibold opacity-80">{rp(v.price)}</span>
+                    )}
+                  </span>
                 </button>
               );
             })}

@@ -64,7 +64,12 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
           where: { eventId: current.id },
           orderBy: { name: "asc" },
           include: {
-            product: { select: { images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } } } },
+            product: {
+              select: {
+                images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
+                variants: { where: { imageUrl: { not: null } }, select: { name: true, imageUrl: true } },
+              },
+            },
           },
         }),
         prisma.poOrder.findMany({ where: { eventId: current.id }, orderBy: { createdAt: "asc" } }),
@@ -92,7 +97,11 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
         got: i.got,
         soldOut: i.soldOut,
         productId: i.productId,
-        image: i.imageUrl ?? i.product?.images[0]?.url ?? null,
+        image:
+          i.imageUrl ??
+          i.product?.variants.find((v) => v.name === i.variant)?.imageUrl ??
+          i.product?.images[0]?.url ??
+          null,
         // Purchase cost never leaves the server for non-owner admins.
         ...(isOwner ? { cost: i.cost } : {}),
       }));

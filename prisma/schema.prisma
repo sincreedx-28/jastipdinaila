@@ -100,6 +100,10 @@ model ProductVariant {
   // the same item can't be posted twice.
   barcode String? @unique
 
+  // Photo of this variant (e.g. the shade's swatch). Optional: without one
+  // the shop shows the product's own photos.
+  imageUrl String?
+
   // Selling price in Rupiah (jastip fee included).
   price Int
 

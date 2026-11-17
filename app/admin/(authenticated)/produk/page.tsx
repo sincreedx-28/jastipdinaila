@@ -68,7 +68,7 @@ export default async function AdminProductsPage({
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
         poEvent: { select: { name: true } },
         variants: {
-          select: { name: true, price: true, stockQty: true, barcode: true },
+          select: { name: true, price: true, stockQty: true, barcode: true, imageUrl: true },
           orderBy: { sortOrder: "asc" },
         },
       },
@@ -296,9 +296,9 @@ export default async function AdminProductsPage({
                 return (
                   <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                     <div className="relative h-13 w-13 shrink-0 overflow-hidden rounded-xl">
-                      {p.images[0] ? (
+                      {(p.images[0]?.url ?? p.variants.find((v) => v.imageUrl)?.imageUrl) ? (
                         <Image
-                          src={p.images[0].url}
+                          src={(p.images[0]?.url ?? p.variants.find((v) => v.imageUrl)?.imageUrl)!}
                           alt={p.name}
                           fill
                           sizes="52px"
