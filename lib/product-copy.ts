@@ -20,7 +20,9 @@ const slugify = (name: string) =>
  */
 export async function copyProduct(
   sourceId: string,
-  overrides: { name?: string; isActive?: boolean; poEventId?: string | null } = {}
+  overrides: { name?: string; isActive?: boolean; poEventId?: string | null } = {},
+  /** Hand the barcodes over to the copy (barcodes are unique per shop). */
+  moveBarcodes = false
 ) {
   const source = await prisma.product.findUnique({
     where: { id: sourceId },
@@ -60,6 +62,15 @@ export async function copyProduct(
       },
     });
     await syncProductTotals(tx, created.id);
+    if (moveBarcodes) {
+      const copies = await tx.productVariant.findMany({ where: { productId: created.id } });
+      for (const v of source.variants.filter((x) => x.barcode)) {
+        const target = copies.find((c) => c.name === v.name);
+        if (!target) continue;
+        await tx.productVariant.update({ where: { id: v.id }, data: { barcode: null } });
+        await tx.productVariant.update({ where: { id: target.id }, data: { barcode: v.barcode } });
+      }
+    }
     return created;
   });
 

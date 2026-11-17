@@ -58,6 +58,8 @@ export function ProductForm({
   defaultValues,
   defaultGroup,
   defaultBatch,
+  productId,
+  presetBarcode,
   existingImages,
   submitLabel,
   isOwner,
@@ -69,6 +71,10 @@ export function ProductForm({
   defaultGroup?: string;
   /** Adding from a PO batch box: starts as Pre-Order in that batch. */
   defaultBatch?: string;
+  /** Product being edited (for the barcode check). */
+  productId?: string;
+  /** Scanned barcode to fill in. */
+  presetBarcode?: string;
   existingImages?: ExistingImage[];
   submitLabel: string;
   /** Owner (super admin) also sees and enters purchase prices. */
@@ -163,7 +169,13 @@ export function ProductForm({
         </Field>
       )}
 
-      <VariantEditor type={type} isOwner={isOwner} initial={defaultValues?.variants} />
+      <VariantEditor
+        type={type}
+        isOwner={isOwner}
+        initial={defaultValues?.variants}
+        productId={productId}
+        presetBarcode={presetBarcode}
+      />
 
       <Field label="Foto produk">
         <div className="flex flex-wrap items-center gap-3">

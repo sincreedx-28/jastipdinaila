@@ -11,6 +11,8 @@ export type VariantInput = {
   initialStock?: number | null;
   /** Owner only: purchase price per pcs for initialStock. */
   initialCost?: number | null;
+  /** Barcode on this variant's packaging; "" / null when it has none. */
+  barcode?: string | null;
 };
 
 export type VariantRowValue = {
@@ -18,6 +20,7 @@ export type VariantRowValue = {
   name: string;
   price: number;
   stockQty: number | null;
+  barcode?: string | null;
 };
 
 /** "Rp12.000" or "Rp12.000 – Rp15.000" for a price range. */

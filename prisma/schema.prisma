@@ -95,6 +95,11 @@ model ProductVariant {
   name      String
   sortOrder Int    @default(0)
 
+  // Barcode printed on this variant's packaging (each shade/size has its
+  // own). Unique across the shop, so scanning finds exactly one item and
+  // the same item can't be posted twice.
+  barcode String? @unique
+
   // Selling price in Rupiah (jastip fee included).
   price Int
 

@@ -23,13 +23,15 @@ export type CatalogEntry = {
   image: string | null;
   price: number;
   variants: { name: string; price: number }[];
+  /** barcode → variant name ("" for a product without options). */
+  barcodes: Record<string, string>;
 };
 export type ReadyProduct = {
   id: string;
   name: string;
   group: string | null;
   isActive: boolean;
-  variants: { id: string; name: string; price: number; stockQty: number }[];
+  variants: { id: string; name: string; price: number; stockQty: number; barcode: string | null }[];
 };
 export type SaleRow = {
   id: string;

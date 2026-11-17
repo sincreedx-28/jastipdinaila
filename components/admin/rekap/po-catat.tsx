@@ -85,7 +85,7 @@ export function PoCatat({
 
   const pickItem = (v: PickedItem | null) => {
     setItem(v);
-    setVariant("");
+    setVariant(v?.scannedVariant ?? "");
     setOtherVariant(false);
     setPrice("");
     setPhotoFile(null);

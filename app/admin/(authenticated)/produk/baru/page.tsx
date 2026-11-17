@@ -3,13 +3,14 @@ import { ProductForm } from "@/components/admin/product-form";
 import { createProduct } from "@/lib/actions/products";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { listPoEventOptions } from "@/lib/po-events";
+import { cleanBarcode } from "@/lib/barcode";
 
 export default async function NewProductPage({
   searchParams,
 }: {
-  searchParams: Promise<{ grup?: string; batch?: string }>;
+  searchParams: Promise<{ grup?: string; batch?: string; barcode?: string }>;
 }) {
-  const [{ grup, batch }, admin, poEvents] = await Promise.all([
+  const [{ grup, batch, barcode }, admin, poEvents] = await Promise.all([
     searchParams,
     getCurrentAdmin(),
     listPoEventOptions(),
@@ -27,6 +28,7 @@ export default async function NewProductPage({
         submitLabel="Simpan produk"
         defaultGroup={grup}
         defaultBatch={poEvents.some((e) => e.id === batch) ? batch : undefined}
+        presetBarcode={barcode ? cleanBarcode(barcode) : undefined}
         isOwner={Boolean(admin?.isSuperAdmin)}
         poEvents={poEvents}
       />

@@ -3,13 +3,15 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { duplicateProduct } from "@/lib/actions/products";
 import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { VisibilityToggle } from "@/components/admin/visibility-toggle";
 import { CategorySelect } from "@/components/admin/category-select";
 import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
 import { formatPriceRange } from "@/lib/variant-types";
+import { cleanBarcode, isBarcode, looksScanned } from "@/lib/barcode";
+import { UnknownBarcode } from "@/components/admin/unknown-barcode";
+import { SearchBox } from "@/components/admin/search-box";
 import { poEventSelect } from "@/lib/shop-visibility";
 import { toEventInfo } from "@/lib/po-event-info";
 import { eventState } from "@/lib/po-event-state";
@@ -37,11 +39,14 @@ export default async function AdminProductsPage({
   const q = sp.q?.trim() ?? "";
 
   const where: Prisma.ProductWhereInput = {};
+  const scanned = q ? cleanBarcode(q) : "";
   if (q) {
     where.OR = [
       { name: { contains: q, mode: "insensitive" } },
       { group: { contains: q, mode: "insensitive" } },
       { category: { contains: q, mode: "insensitive" } },
+      // A scanner types the barcode into this same search box.
+      ...(isBarcode(scanned) ? [{ variants: { some: { barcode: scanned } } }] : []),
     ];
   }
   if (sp.grup) where.group = sp.grup === NO_GROUP ? null : sp.grup;
@@ -63,7 +68,7 @@ export default async function AdminProductsPage({
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
         poEvent: { select: { name: true } },
         variants: {
-          select: { name: true, price: true, stockQty: true },
+          select: { name: true, price: true, stockQty: true, barcode: true },
           orderBy: { sortOrder: "asc" },
         },
       },
@@ -150,13 +155,7 @@ export default async function AdminProductsPage({
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-          <Input
-            name="q"
-            type="search"
-            defaultValue={q}
-            placeholder="Cari produk di semua kategori"
-            className="rounded-full!"
-          />
+          <SearchBox defaultValue={q} />
         </form>
         <Button render={<Link href="/admin/produk/baru">+ Produk baru</Link>} />
       </div>
@@ -228,10 +227,35 @@ export default async function AdminProductsPage({
         )}
       </p>
 
-      {products.length === 0 && (
-        <p className="box p-8 text-center text-muted-foreground">
-          {filtered ? "Tidak ada produk yang cocok." : "Belum ada produk."}
-        </p>
+      {(() => {
+        const hit = isBarcode(scanned)
+          ? products.flatMap((p) => p.variants.filter((v) => v.barcode === scanned).map((v) => ({ p, v })))[0]
+          : undefined;
+        return hit ? (
+          <p className="soft-note">
+            Barcode <b>{scanned}</b> = <b>{hit.p.name}</b>
+            {hit.v.name ? ` (${hit.v.name})` : ""}
+            {hit.p.type === "READY" && ` · stok ${hit.v.stockQty ?? 0}`} ·{" "}
+            <Link href={`/admin/produk/${hit.p.id}`} className="font-bold underline">
+              Buka produk
+            </Link>
+          </p>
+        ) : null;
+      })()}
+      {products.length === 0 && looksScanned(q) ? (
+        <UnknownBarcode
+          code={scanned}
+          products={await prisma.product.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+          })}
+        />
+      ) : (
+        products.length === 0 && (
+          <p className="box p-8 text-center text-muted-foreground">
+            {filtered ? "Tidak ada produk yang cocok." : "Belum ada produk."}
+          </p>
+        )
       )}
 
       {sections.map((sec) => {

@@ -116,7 +116,9 @@ export async function duplicatePoEvent(
   });
   let copied = 0;
   for (const { id } of allowed) {
-    if (await copyProduct(id, { poEventId: ev.id, isActive: true })) copied++;
+    // When the old batch is archived, its barcodes move to the new copies
+    // so scanning finds the batch that's actually on sale.
+    if (await copyProduct(id, { poEventId: ev.id, isActive: true }, archiveOld)) copied++;
   }
   if (archiveOld) await prisma.poEvent.update({ where: { id: sourceId }, data: { status: "ARCHIVED" } });
   revalidate();

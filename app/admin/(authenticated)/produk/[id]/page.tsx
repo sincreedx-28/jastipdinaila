@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { listPoEventOptions } from "@/lib/po-events";
+import { cleanBarcode } from "@/lib/barcode";
 import { ProductForm } from "@/components/admin/product-form";
 import { StockPanel } from "@/components/admin/stock-panel";
 import { updateProduct } from "@/lib/actions/products";
@@ -12,9 +13,9 @@ export default async function EditProductPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ baru?: string }>;
+  searchParams: Promise<{ baru?: string; barcode?: string }>;
 }) {
-  const [{ id }, { baru }, admin, poEvents] = await Promise.all([
+  const [{ id }, { baru, barcode }, admin, poEvents] = await Promise.all([
     params,
     searchParams,
     getCurrentAdmin(),
@@ -51,6 +52,12 @@ export default async function EditProductPage({
         </Link>
         <h2 className="text-2xl">Edit produk</h2>
       </div>
+      {barcode && (
+        <p className="soft-note max-w-2xl">
+          Barcode <b>{cleanBarcode(barcode)}</b> disiapkan sebagai <b>varian baru</b> di bawah
+          (mis. shade baru). Isi nama varian &amp; harganya, lalu simpan.
+        </p>
+      )}
       {baru === "salinan" && (
         <p className="soft-note max-w-2xl">
           Ini salinan produk dan masih <b>nonaktif</b> (belum tampil di toko). Ganti nama,
@@ -63,6 +70,8 @@ export default async function EditProductPage({
         existingImages={product.images}
         isOwner={isOwner}
         poEvents={poEvents}
+        productId={product.id}
+        presetBarcode={barcode ? cleanBarcode(barcode) : undefined}
         defaultValues={{
           name: product.name,
           description: product.description,
@@ -79,6 +88,7 @@ export default async function EditProductPage({
             name: v.name,
             price: v.price,
             stockQty: v.stockQty,
+            barcode: v.barcode,
           })),
         }}
       />

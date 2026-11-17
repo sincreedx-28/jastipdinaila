@@ -78,7 +78,7 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
             type: true,
             poEventId: true,
             images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
-            variants: { select: { name: true, price: true }, orderBy: { sortOrder: "asc" } },
+            variants: { select: { name: true, price: true, barcode: true }, orderBy: { sortOrder: "asc" } },
           },
           orderBy: { name: "asc" },
         }),
@@ -111,6 +111,9 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
         image: p.images[0]?.url ?? null,
         variants: p.variants.filter((v) => v.name).map((v) => ({ name: v.name, price: v.price })),
         price: p.variants.length ? Math.min(...p.variants.map((v) => v.price)) : 0,
+        barcodes: Object.fromEntries(
+          p.variants.filter((v) => v.barcode).map((v) => [v.barcode!, v.name])
+        ),
       }));
     }
   } else {
@@ -125,7 +128,7 @@ export default async function RekapPage({ searchParams }: { searchParams: Promis
           group: true,
           isActive: true,
           variants: {
-            select: { id: true, name: true, price: true, stockQty: true },
+            select: { id: true, name: true, price: true, stockQty: true, barcode: true },
             orderBy: { sortOrder: "asc" },
           },
         },
