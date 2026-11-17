@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addPurchaseStock, correctStock, type StockFormState } from "@/lib/actions/stock";
+import { addPurchaseStock, correctStock, setAvgCost, type StockFormState } from "@/lib/actions/stock";
 
 type PanelVariant = {
   id: string;
@@ -116,8 +116,51 @@ function CorrectionForm({ variant, onDone }: { variant: PanelVariant; onDone: ()
   );
 }
 
+function CostForm({ variant, onDone }: { variant: PanelVariant; onDone: () => void }) {
+  const [state, action, pending] = useActionState(setAvgCost.bind(null, variant.id), undefined);
+  const [cost, setCost] = useState(variant.avgCost !== null ? String(variant.avgCost) : "");
+  const done = useRef(onDone);
+  useEffect(() => {
+    if (state?.ok) done.current();
+  }, [state]);
+
+  return (
+    <form action={action} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+      <p className="text-sm font-semibold">{variant.avgCost === null ? "Isi modal" : "Ubah modal"}</p>
+      <p className="text-xs text-muted-foreground">
+        Harga beli per pcs untuk {variant.stockQty} pcs yang ada sekarang. Jumlah stok tidak
+        berubah. Untuk barang yang baru dibeli, pakai “+ Belanja”.
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[9rem_1fr]">
+        <div className="relative">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            Rp
+          </span>
+          <Input
+            name="avgCost"
+            inputMode="numeric"
+            className="pl-8"
+            placeholder="Harga beli/pcs"
+            aria-label="Modal per pcs"
+            value={fmtDigits(cost)}
+            onChange={(e) => setCost(e.target.value.replace(/\D/g, ""))}
+            required
+          />
+        </div>
+        <Input name="note" placeholder="Catatan (opsional)" aria-label="Catatan modal" />
+      </div>
+      <div className="flex items-center gap-3">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Menyimpan..." : "Simpan modal"}
+        </Button>
+        <Feedback state={state} />
+      </div>
+    </form>
+  );
+}
+
 function VariantStockRow({ variant, isOwner }: { variant: PanelVariant; isOwner: boolean }) {
-  const [open, setOpen] = useState<"buy" | "fix" | null>(null);
+  const [open, setOpen] = useState<"buy" | "fix" | "cost" | null>(null);
   const margin =
     variant.avgCost !== null && variant.avgCost > 0 ? variant.price - variant.avgCost : null;
 
@@ -149,7 +192,17 @@ function VariantStockRow({ variant, isOwner }: { variant: PanelVariant; isOwner:
             )}
           </span>
         )}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
+          {isOwner && (
+            <Button
+              type="button"
+              size="sm"
+              variant={open === "cost" ? "default" : "outline"}
+              onClick={() => setOpen(open === "cost" ? null : "cost")}
+            >
+              {variant.avgCost === null ? "Isi modal" : "Ubah modal"}
+            </Button>
+          )}
           {isOwner && (
             <Button
               type="button"
@@ -172,6 +225,7 @@ function VariantStockRow({ variant, isOwner }: { variant: PanelVariant; isOwner:
       </div>
       {open === "buy" && <PurchaseForm variant={variant} onDone={() => setOpen(null)} />}
       {open === "fix" && <CorrectionForm variant={variant} onDone={() => setOpen(null)} />}
+      {open === "cost" && <CostForm variant={variant} onDone={() => setOpen(null)} />}
     </div>
   );
 }
@@ -231,11 +285,17 @@ export function StockPanel({
                   })}
                 </span>
                 {m.variantName && <span className="font-medium">{m.variantName}</span>}
-                <span className={m.qty < 0 ? "text-destructive" : "text-emerald-700"}>
-                  {m.qty > 0 ? "+" : ""}
-                  {m.qty}
-                </span>
-                <span>{m.type === "PURCHASE" ? "belanja" : "koreksi"}</span>
+                {m.qty === 0 && m.type === "ADJUSTMENT" ? (
+                  <span>modal diubah</span>
+                ) : (
+                  <>
+                    <span className={m.qty < 0 ? "text-destructive" : "text-emerald-700"}>
+                      {m.qty > 0 ? "+" : ""}
+                      {m.qty}
+                    </span>
+                    <span>{m.type === "PURCHASE" ? "belanja" : "koreksi"}</span>
+                  </>
+                )}
                 {m.unitCost !== null && <span>@ {rp(m.unitCost)}</span>}
                 <span className="text-muted-foreground">→ sisa {m.stockAfter}</span>
                 {m.note && <span className="italic text-muted-foreground">“{m.note}”</span>}
