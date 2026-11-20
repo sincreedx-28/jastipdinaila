@@ -16,6 +16,12 @@ export type ProductCardData = {
   imageUrl: string | null;
   stockQty: number | null;
   category?: string | null;
+  /** Struck-through price for the shown price ("harga coret"). */
+  compareAt?: number | null;
+  /** Biggest discount % among the variants. */
+  off?: number | null;
+  /** Variants have different discounts: show "Up to". */
+  offUpTo?: boolean;
 };
 
 export function ProductCard({ product }: { product: ProductCardData }) {
@@ -49,6 +55,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               Pre-Order
             </span>
           )}
+          {product.off && (
+            <span className="absolute right-2 top-2 rounded-md bg-primary px-2 py-0.5 text-xs font-extrabold text-primary-foreground">
+              {product.offUpTo ? "Up to " : ""}-{product.off}%
+            </span>
+          )}
           {(soldOut || poBlocked) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70">
               <span className="rounded-full bg-card px-3 py-1 text-xs font-extrabold text-foreground">
@@ -69,6 +80,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
               <span className="mr-1 text-xs font-semibold text-muted-foreground">From</span>
             )}
             Rp{product.price.toLocaleString("id-ID")}
+            {product.compareAt && (
+              <span className="ml-1.5 text-xs font-semibold text-muted-foreground line-through">
+                Rp{product.compareAt.toLocaleString("id-ID")}
+              </span>
+            )}
           </p>
         </CardContent>
       </Card>

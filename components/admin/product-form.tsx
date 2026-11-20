@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ProductFormState } from "@/lib/actions/products";
 import { deleteProductImage } from "@/lib/actions/products";
 import { VariantEditor } from "@/components/admin/variant-editor";
+import { SuggestInput } from "@/components/admin/suggest-input";
+import { catKey, type CategoryOption } from "@/lib/category";
 import type { VariantRowValue } from "@/lib/variant-types";
 import { compressFileInput } from "@/lib/compress-image";
 
@@ -64,6 +66,7 @@ export function ProductForm({
   submitLabel,
   isOwner,
   poEvents,
+  categoryOptions,
 }: {
   action: (state: ProductFormState, formData: FormData) => Promise<ProductFormState>;
   defaultValues?: ProductFormValues;
@@ -81,6 +84,8 @@ export function ProductForm({
   isOwner: boolean;
   /** PO Events (batches) a Pre-Order product can belong to. */
   poEvents: PoEventOption[];
+  /** Categories and sub-categories already in use, offered under the fields. */
+  categoryOptions?: { groups: CategoryOption[]; categories: CategoryOption[] };
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [type, setType] = useState<"READY" | "PO">(
@@ -88,6 +93,15 @@ export function ProductForm({
   );
   const [images, setImages] = useState(existingImages ?? []);
   const [shrinking, setShrinking] = useState(false);
+  const [group, setGroup] = useState(defaultValues?.group ?? defaultGroup ?? "");
+  // Sub-categories already used under the chosen category come first.
+  const subOptions = useMemo(() => {
+    const all = categoryOptions?.categories ?? [];
+    const g = catKey(group.trim());
+    if (!g) return all;
+    const inGroup = (o: CategoryOption) => (o.groups ?? []).some((x) => catKey(x) === g);
+    return [...all.filter(inGroup), ...all.filter((o) => !inGroup(o))];
+  }, [categoryOptions, group]);
 
   return (
     <form action={formAction} className="max-w-2xl space-y-5">
@@ -103,19 +117,23 @@ export function ProductForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Kategori" htmlFor="group">
-          <Input
+          <SuggestInput
             id="group"
             name="group"
             placeholder="mis. Skincare, Fashion"
             defaultValue={defaultValues?.group ?? defaultGroup ?? ""}
+            options={categoryOptions?.groups ?? []}
+            onValueChange={setGroup}
           />
         </Field>
         <Field label="Sub-kategori" htmlFor="category" hint="(opsional)">
-          <Input
+          <SuggestInput
             id="category"
             name="category"
+            what="sub-kategori"
             placeholder="mis. Toner, Atasan"
             defaultValue={defaultValues?.category ?? ""}
+            options={subOptions}
           />
         </Field>
       </div>

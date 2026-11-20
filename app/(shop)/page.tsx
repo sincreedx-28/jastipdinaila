@@ -6,6 +6,7 @@ import { eventState } from "@/lib/po-event-state";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
+import { cardDiscount } from "@/lib/variant-types";
 import { ProductCard } from "@/components/storefront/product-card";
 import { HeroBanners } from "@/components/storefront/hero-banners";
 import { TypeTabs } from "@/components/storefront/type-tabs";
@@ -17,7 +18,7 @@ async function getHomeProducts() {
       where: shopVisible,
       include: {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },
-      variants: { select: { price: true, imageUrl: true }, orderBy: { sortOrder: "asc" } },
+      variants: { select: { price: true, imageUrl: true, compareAtPrice: true }, orderBy: { sortOrder: "asc" } },
       poEvent: { select: poEventSelect },
     },
       orderBy: { createdAt: "desc" },
@@ -109,6 +110,7 @@ export default async function Home() {
                     poState: p.type === "PO" && p.poEvent ? eventState(toEventInfo(p.poEvent)) : null,
                     price: p.price,
                     priceMax: Math.max(p.price, ...p.variants.map((v) => v.price)),
+    ...cardDiscount(p.variants),
                     stockQty: p.stockQty,
                     imageUrl: p.images[0]?.url ?? p.variants.find((v) => v.imageUrl)?.imageUrl ?? null,
                     category: p.category,

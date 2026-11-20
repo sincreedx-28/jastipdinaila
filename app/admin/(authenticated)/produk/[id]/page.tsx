@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { listPoEventOptions } from "@/lib/po-events";
+import { getCategoryOptions } from "@/lib/category-options";
 import { cleanBarcode } from "@/lib/barcode";
+import { expMonth } from "@/lib/variant-types";
 import { ProductForm } from "@/components/admin/product-form";
 import { StockPanel } from "@/components/admin/stock-panel";
 import { updateProduct } from "@/lib/actions/products";
@@ -15,11 +17,12 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ baru?: string; barcode?: string }>;
 }) {
-  const [{ id }, { baru, barcode }, admin, poEvents] = await Promise.all([
+  const [{ id }, { baru, barcode }, admin, poEvents, categoryOptions] = await Promise.all([
     params,
     searchParams,
     getCurrentAdmin(),
     listPoEventOptions(),
+    getCategoryOptions(),
   ]);
   const isOwner = Boolean(admin?.isSuperAdmin);
 
@@ -64,6 +67,7 @@ export default async function EditProductPage({
         existingImages={product.images}
         isOwner={isOwner}
         poEvents={poEvents}
+        categoryOptions={categoryOptions}
         productId={product.id}
         presetBarcode={barcode ? cleanBarcode(barcode) : undefined}
         defaultValues={{
@@ -84,6 +88,8 @@ export default async function EditProductPage({
             stockQty: v.stockQty,
             barcode: v.barcode,
             imageUrl: v.imageUrl,
+            compareAtPrice: v.compareAtPrice,
+            expDate: expMonth(v.expDate),
           })),
         }}
       />

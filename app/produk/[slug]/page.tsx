@@ -6,13 +6,14 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
-import { formatPriceRange } from "@/lib/variant-types";
+import { expMonth } from "@/lib/variant-types";
 import { poEventSelect, shopVisible } from "@/lib/shop-visibility";
 import { toEventInfo } from "@/lib/po-event-info";
 import { eventState, fmtDay } from "@/lib/po-event-state";
 import { PoEventHeader } from "@/components/storefront/po-event-header";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { VariantSelectionProvider } from "@/components/storefront/variant-selection";
+import { PriceTag } from "@/components/storefront/price-tag";
 
 export default async function ProductDetailPage({
   params,
@@ -38,9 +39,6 @@ export default async function ProductDetailPage({
   const evState = event ? eventState(event) : "open";
   const blockedLabel =
     evState === "soon" ? `Opens ${fmtDay(event!.openDate!)}` : evState !== "open" ? "Pre-order closed" : null;
-  const prices = product.variants.map((v) => v.price);
-  const minPrice = prices.length ? Math.min(...prices) : product.price;
-  const maxPrice = prices.length ? Math.max(...prices) : product.price;
   const mainImage = product.images[0]?.url ?? product.variants.find((v) => v.imageUrl)?.imageUrl ?? null;
   const inStock = (v: (typeof product.variants)[number]) =>
     product.type !== "READY" || (v.stockQty ?? 0) > 0;
@@ -76,9 +74,13 @@ export default async function ProductDetailPage({
               {product.type === "READY" ? "Ready Stock" : "Pre-Order"}
             </Badge>
             <h1 className="mt-2 font-heading text-2xl font-bold">{product.name}</h1>
-            <p className="mt-1 text-xl font-extrabold text-primary">
-              {formatPriceRange(minPrice, maxPrice)}
-            </p>
+            <PriceTag
+              variants={product.variants.map((v) => ({
+                id: v.id,
+                price: v.price,
+                compareAtPrice: v.compareAtPrice,
+              }))}
+            />
           </div>
 
           {product.type === "PO" &&
@@ -105,6 +107,7 @@ export default async function ProductDetailPage({
               price: v.price,
               stockQty: product.type === "READY" ? v.stockQty ?? 0 : null,
               imageUrl: v.imageUrl,
+              expDate: expMonth(v.expDate),
             }))}
             product={{
               productId: product.id,

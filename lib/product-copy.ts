@@ -57,6 +57,8 @@ export async function copyProduct(
             sortOrder: v.sortOrder,
             price: v.price,
             imageUrl: v.imageUrl,
+            compareAtPrice: v.compareAtPrice,
+            expDate: v.expDate,
             stockQty: source.type === "READY" ? 0 : null,
           })),
         },

@@ -12,6 +12,8 @@ import { copyProduct } from "@/lib/product-copy";
 import type { VariantInput } from "@/lib/variant-types";
 import { cleanBarcode, isBarcode } from "@/lib/barcode";
 import { sniffImageType } from "@/lib/image-sniff";
+import { canonicalCategoryNames, getCategoryOptions } from "@/lib/category-options";
+import { catKey } from "@/lib/category";
 
 const PRODUCT_IMAGE_BUCKET = "product-images";
 
@@ -89,6 +91,20 @@ export async function uploadVariantPhoto(
   return { url: data.publicUrl };
 }
 
+/** "2027-03", "03/2027" or "2027-03-15" → the 1st of that month (UTC). */
+function parseExp(v: unknown): Date | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  let y: number, m: number;
+  const iso = s.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/);
+  const mmyy = s.match(/^(\d{1,2})[/.-](\d{2}|\d{4})$/);
+  if (iso) [y, m] = [Number(iso[1]), Number(iso[2])];
+  else if (mmyy) [m, y] = [Number(mmyy[1]), Number(mmyy[2].length === 2 ? `20${mmyy[2]}` : mmyy[2])];
+  else throw new Error(`Exp date "${s}" tidak valid. Contoh: 03/2027.`);
+  if (m < 1 || m > 12 || y < 2000 || y > 2100) throw new Error(`Exp date "${s}" tidak valid. Contoh: 03/2027.`);
+  return new Date(Date.UTC(y, m - 1, 1));
+}
+
 function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
   let raw: unknown;
   try {
@@ -119,6 +135,11 @@ function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
         : null,
     barcode: cleanBarcode(String(r.barcode ?? "")) || null,
     imageUrl: cleanVariantImage(r.imageUrl),
+    compareAtPrice:
+      r.compareAtPrice === null || r.compareAtPrice === "" || r.compareAtPrice === undefined || Number(r.compareAtPrice) === 0
+        ? null
+        : toInt(r.compareAtPrice),
+    expDate: r.expDate ? String(r.expDate) : null,
   }));
 
   if (rows.length > 50) throw new Error("Maksimal 50 varian per produk.");
@@ -139,6 +160,13 @@ function parseVariants(formData: FormData, type: ProductType): VariantInput[] {
     const label = r.name ? `varian "${r.name}"` : "produk";
     if (!Number.isFinite(r.price) || r.price <= 0) {
       throw new Error(`Harga jual ${label} belum diisi.`);
+    }
+    parseExp(r.expDate); // throws a clear message on a bad date
+    if (r.compareAtPrice !== null && r.compareAtPrice !== undefined) {
+      if (!Number.isFinite(r.compareAtPrice) || r.compareAtPrice <= r.price) {
+        throw new Error(`Harga coret ${label} harus lebih tinggi dari harga jualnya.`);
+      }
+      if (r.compareAtPrice > r.price * 20) throw new Error(`Harga coret ${label} terlalu tinggi.`);
     }
     if (r.initialStock !== null && r.initialStock !== undefined) {
       if (!Number.isFinite(r.initialStock) || r.initialStock < 0) {
@@ -279,6 +307,7 @@ export async function createProduct(
   const admin = await requireAdminAction();
   try {
     const { fields, variants } = parseProductFields(formData);
+    Object.assign(fields, await canonicalCategoryNames(fields.group, fields.category));
     await assertPoEvent(fields.poEventId);
     await assertBarcodesFree(variants);
     const slug = slugify(fields.name);
@@ -296,6 +325,8 @@ export async function createProduct(
             price: row.price,
             barcode: row.barcode,
             imageUrl: row.imageUrl ?? null,
+            compareAtPrice: row.compareAtPrice ?? null,
+            expDate: parseExp(row.expDate),
             stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
           },
         });
@@ -328,6 +359,7 @@ export async function updateProduct(
   const admin = await requireAdminAction();
   try {
     const { fields, variants } = parseProductFields(formData);
+    Object.assign(fields, await canonicalCategoryNames(fields.group, fields.category));
     await assertPoEvent(fields.poEventId);
     await assertBarcodesFree(variants, productId);
 
@@ -364,6 +396,8 @@ export async function updateProduct(
               price: row.price,
               barcode: row.barcode,
               imageUrl: row.imageUrl ?? null,
+            compareAtPrice: row.compareAtPrice ?? null,
+            expDate: parseExp(row.expDate),
               // Switching READY ↔ PO: PO has no stock count; a product that
               // becomes READY starts from 0 until stock is added.
               stockQty: fields.type === "READY" ? before.stockQty ?? 0 : null,
@@ -378,6 +412,8 @@ export async function updateProduct(
               price: row.price,
               barcode: row.barcode,
               imageUrl: row.imageUrl ?? null,
+            compareAtPrice: row.compareAtPrice ?? null,
+            expDate: parseExp(row.expDate),
               stockQty: fields.type === "READY" ? row.initialStock ?? 0 : null,
             },
           });
@@ -468,4 +504,21 @@ export async function deleteProduct(productId: string) {
 
   revalidatePath("/admin/produk");
   revalidatePath("/produk");
+}
+
+/**
+ * "Gabungkan": renames the other spellings of a category (or sub-category)
+ * to the main one, e.g. every "Skin care" product becomes "Skincare".
+ */
+export async function mergeCategorySpellings(field: "group" | "category", key: string) {
+  await requireAdminAction();
+  const { groups, categories } = await getCategoryOptions();
+  const opt = (field === "group" ? groups : categories).find((o) => catKey(o.value) === key);
+  if (!opt || opt.others.length === 0) return;
+  if (field === "group") {
+    await prisma.product.updateMany({ where: { group: { in: opt.others } }, data: { group: opt.value } });
+  } else {
+    await prisma.product.updateMany({ where: { category: { in: opt.others } }, data: { category: opt.value } });
+  }
+  revalidateProductPages();
 }
