@@ -3,6 +3,7 @@ import { ProductForm } from "@/components/admin/product-form";
 import { createProduct } from "@/lib/actions/products";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { listPoEventOptions } from "@/lib/po-events";
+import { getCategoryOptions } from "@/lib/category-options";
 import { cleanBarcode } from "@/lib/barcode";
 
 export default async function NewProductPage({
@@ -10,10 +11,11 @@ export default async function NewProductPage({
 }: {
   searchParams: Promise<{ grup?: string; batch?: string; barcode?: string }>;
 }) {
-  const [{ grup, batch, barcode }, admin, poEvents] = await Promise.all([
+  const [{ grup, batch, barcode }, admin, poEvents, categoryOptions] = await Promise.all([
     searchParams,
     getCurrentAdmin(),
     listPoEventOptions(),
+    getCategoryOptions(),
   ]);
   return (
     <div className="space-y-5">
@@ -31,6 +33,7 @@ export default async function NewProductPage({
         presetBarcode={barcode ? cleanBarcode(barcode) : undefined}
         isOwner={Boolean(admin?.isSuperAdmin)}
         poEvents={poEvents}
+        categoryOptions={categoryOptions}
       />
     </div>
   );

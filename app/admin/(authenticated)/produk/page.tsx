@@ -3,12 +3,14 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { Button } from "@/components/ui/button";
-import { duplicateProduct } from "@/lib/actions/products";
+import { duplicateProduct, mergeCategorySpellings } from "@/lib/actions/products";
+import { getCategoryOptions } from "@/lib/category-options";
+import { catKey } from "@/lib/category";
 import { DeleteProductButton } from "@/components/admin/delete-product-button";
 import { VisibilityToggle } from "@/components/admin/visibility-toggle";
 import { CategorySelect } from "@/components/admin/category-select";
 import { ProductPlaceholder } from "@/components/storefront/product-placeholder";
-import { formatPriceRange } from "@/lib/variant-types";
+import { expMonth, fmtExp, formatPriceRange, monthsLeft } from "@/lib/variant-types";
 import { cleanBarcode, isBarcode, looksScanned } from "@/lib/barcode";
 import { UnknownBarcode } from "@/components/admin/unknown-barcode";
 import { SearchBox } from "@/components/admin/search-box";
@@ -61,14 +63,14 @@ export default async function AdminProductsPage({
     where.variants = { some: { stockQty: { lte: 3 } } };
   }
 
-  const [products, totalCount, allGroups, events] = await Promise.all([
+  const [products, totalCount, allGroups, events, catOptions] = await Promise.all([
     prisma.product.findMany({
       where,
       include: {
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
         poEvent: { select: { name: true } },
         variants: {
-          select: { name: true, price: true, stockQty: true, barcode: true, imageUrl: true },
+          select: { name: true, price: true, stockQty: true, barcode: true, imageUrl: true, expDate: true },
           orderBy: { sortOrder: "asc" },
         },
       },
@@ -77,6 +79,7 @@ export default async function AdminProductsPage({
     prisma.product.count(),
     prisma.product.findMany({ select: { group: true }, distinct: ["group"] }),
     prisma.poEvent.findMany({ select: poEventSelect, orderBy: { createdAt: "desc" } }),
+    getCategoryOptions(),
   ]);
   const eventInfos = events.map(toEventInfo);
   const byBatch = sp.kelompok === "batch" || (sp.kelompok !== "kategori" && (sp.tipe === "PO" || Boolean(sp.batch)));
@@ -159,6 +162,34 @@ export default async function AdminProductsPage({
         </form>
         <Button render={<Link href="/admin/produk/baru">+ Produk baru</Link>} />
       </div>
+
+      {(() => {
+        const twins = [
+          ...catOptions.groups.filter((o) => o.others.length).map((o) => ({ field: "group" as const, o })),
+          ...catOptions.categories.filter((o) => o.others.length).map((o) => ({ field: "category" as const, o })),
+        ];
+        if (!twins.length) return null;
+        return (
+          <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+            <p className="font-bold">Ada kategori yang tertulis dobel</p>
+            <ul className="mt-1.5 space-y-1.5">
+              {twins.map(({ field, o }) => (
+                <li key={field + o.value} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>
+                    {field === "group" ? "Kategori" : "Sub-kategori"} “{o.others.join("”, “")}” → “
+                    <b>{o.value}</b>”
+                  </span>
+                  <form action={mergeCategorySpellings.bind(null, field, catKey(o.value))}>
+                    <Button type="submit" size="sm" variant="outline">
+                      Gabungkan
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       <div className="flex flex-wrap items-center gap-2">
         <CategorySelect options={groupOptions} value={sp.grup ?? ""} hrefFor={groupHrefs} />
@@ -338,6 +369,26 @@ export default async function AdminProductsPage({
                         {p.type === "READY" && stock > 0 && outVariants > 0 && (
                           <span className="text-amber-700"> ({outVariants} habis)</span>
                         )}
+                        {(() => {
+                          // Earliest expiry among variants still on the shelf.
+                          const exps = p.variants
+                            .filter((v) => p.type !== "READY" || (v.stockQty ?? 0) > 0)
+                            .map((v) => expMonth(v.expDate))
+                            .filter((x): x is string => Boolean(x))
+                            .sort();
+                          if (!exps.length) return null;
+                          const left = monthsLeft(exps[0]);
+                          return (
+                            <span
+                              className={
+                                left < 0 ? "font-bold text-destructive" : left <= 3 ? "font-bold text-amber-700" : ""
+                              }
+                            >
+                              {" · "}ED {fmtExp(exps[0])}
+                              {left < 0 ? " (lewat)" : left <= 3 ? " (segera)" : ""}
+                            </span>
+                          );
+                        })()}
                       </p>
                     </div>
                     {/* Own row on phones so the name keeps its width. */}

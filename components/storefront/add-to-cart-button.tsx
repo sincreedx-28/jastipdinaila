@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useCartStore, type CartItem } from "@/lib/store/cart";
 import { Button } from "@/components/ui/button";
 import { useVariantSelection } from "@/components/storefront/variant-selection";
+import { fmtExp } from "@/lib/variant-types";
 
 export type BuyVariant = {
   id: string;
@@ -15,6 +16,8 @@ export type BuyVariant = {
   stockQty: number | null;
   /** This variant's own photo, if any. */
   imageUrl?: string | null;
+  /** Expiry month "YYYY-MM", if filled in. */
+  expDate?: string | null;
 };
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
@@ -108,15 +111,16 @@ export function AddToCartButton({
         </div>
       )}
 
-      {selected && (pricesDiffer || (selected.stockQty !== null && selected.stockQty <= 5)) && (
-        <p className="text-sm">
-          {pricesDiffer && (
-            <span className="text-lg font-extrabold text-primary">{rp(selected.price)}</span>
+      {/* The selected variant's price is shown at the top of the page. */}
+      {selected && (selected.expDate || (selected.stockQty !== null && selected.stockQty <= 5)) && (
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {selected.expDate && (
+            <span>
+              Exp. date: <b>{fmtExp(selected.expDate, "en-GB")}</b>
+            </span>
           )}
           {selected.stockQty !== null && selected.stockQty <= 5 && (
-            <span className="ml-2 font-semibold text-amber-700">
-              Only {selected.stockQty} left
-            </span>
+            <span className="font-semibold text-amber-700">Only {selected.stockQty} left</span>
           )}
         </p>
       )}

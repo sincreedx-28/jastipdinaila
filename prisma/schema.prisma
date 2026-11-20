@@ -107,6 +107,14 @@ model ProductVariant {
   // Selling price in Rupiah (jastip fee included).
   price Int
 
+  // "Harga coret": the higher, struck-through price shown next to the
+  // selling price, with the discount percentage. Null = no discount shown.
+  compareAtPrice Int?
+
+  // Expiry printed on the pack, to the month (stored as the 1st of that
+  // month). Optional; shown to buyers on the product page.
+  expDate DateTime? @db.Date
+
   // READY only; null for PO (made to order, never stock-constrained).
   stockQty Int?
 

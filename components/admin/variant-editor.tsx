@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { VariantInput, VariantRowValue } from "@/lib/variant-types";
+import { discountPct, type VariantInput, type VariantRowValue } from "@/lib/variant-types";
 import { cleanBarcode } from "@/lib/barcode";
 import { lookupBarcode, type BarcodeMatch } from "@/lib/actions/barcode";
 import { uploadVariantPhoto } from "@/lib/actions/products";
@@ -19,6 +19,8 @@ type Row = {
   initialCost: string; // digits only
   barcode: string;
   imageUrl: string;
+  compareAt: string; // digits only, "" = no struck-through price
+  expDate: string; // "YYYY-MM" or ""
 };
 
 let keySeq = 0;
@@ -34,11 +36,23 @@ function toRow(v: VariantRowValue): Row {
     initialCost: "",
     barcode: v.barcode ?? "",
     imageUrl: v.imageUrl ?? "",
+    compareAt: v.compareAtPrice ? String(v.compareAtPrice) : "",
+    expDate: v.expDate ?? "",
   };
 }
 
 function emptyRow(price = ""): Row {
-  return { key: newKey(), name: "", price, initialStock: "", initialCost: "", barcode: "", imageUrl: "" };
+  return {
+    key: newKey(),
+    name: "",
+    price,
+    initialStock: "",
+    initialCost: "",
+    barcode: "",
+    imageUrl: "",
+    compareAt: "",
+    expDate: "",
+  };
 }
 
 const fmt = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -208,7 +222,7 @@ export function VariantEditor({
   // Untouched extra rows (no name, barcode or stock typed) are just left-over
   // placeholders: skip them instead of failing with "nama varian wajib".
   const isBlank = (r: Row) =>
-    !r.id && !r.name.trim() && !r.barcode.trim() && !r.initialStock && !r.initialCost && !r.imageUrl;
+    !r.id && !r.name.trim() && !r.barcode.trim() && !r.initialStock && !r.initialCost && !r.imageUrl && !r.compareAt && !r.expDate;
   const used = hasOptions ? rows.filter((r, i) => i === 0 || !isBlank(r)) : rows.slice(0, 1);
   const payload: VariantInput[] = used.map((r) => ({
     id: r.id,
@@ -218,6 +232,8 @@ export function VariantEditor({
     initialCost: isOwner && !r.id && r.initialCost !== "" ? Number(r.initialCost) : null,
     barcode: cleanBarcode(r.barcode) || null,
     imageUrl: hasOptions ? r.imageUrl || null : null,
+    compareAtPrice: r.compareAt ? Number(r.compareAt) : null,
+    expDate: r.expDate || null,
   }));
 
   function toggleOptions(on: boolean) {
@@ -353,6 +369,26 @@ export function VariantEditor({
               />
             </div>
 
+            <div className="space-y-1 sm:w-36">
+              <span className="text-xs text-muted-foreground">Harga coret (opsional)</span>
+              <MoneyInput
+                ariaLabel={`Harga coret ${row.name}`}
+                value={row.compareAt}
+                placeholder="harga awal"
+                onChange={(compareAt) => update(row.key, { compareAt })}
+              />
+              {row.compareAt &&
+                (discountPct(Number(row.price || 0), Number(row.compareAt)) ? (
+                  <span className="block text-xs font-bold text-emerald-700">
+                    Tampil diskon {discountPct(Number(row.price || 0), Number(row.compareAt))}%
+                  </span>
+                ) : (
+                  <span className="block text-xs font-semibold text-destructive">
+                    Harus lebih tinggi dari harga jual
+                  </span>
+                ))}
+            </div>
+
             <div className="space-y-1 sm:w-44">
               <span className="text-xs text-muted-foreground">Barcode (opsional)</span>
               <Input
@@ -370,6 +406,17 @@ export function VariantEditor({
                     checkBarcode({ ...row, barcode: e.currentTarget.value });
                   }
                 }}
+              />
+            </div>
+
+            <div className="space-y-1 sm:w-40">
+              <span className="text-xs text-muted-foreground">Exp date (opsional)</span>
+              <Input
+                type="month"
+                aria-label={`Exp date ${row.name}`}
+                value={row.expDate}
+                placeholder="2027-03"
+                onChange={(e) => update(row.key, { expDate: e.target.value })}
               />
             </div>
 
@@ -453,7 +500,9 @@ export function VariantEditor({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setRows((rs) => rs.map((r) => ({ ...r, price: rs[0].price })))}
+                onClick={() =>
+                  setRows((rs) => rs.map((r) => ({ ...r, price: rs[0].price, compareAt: rs[0].compareAt })))
+                }
               >
                 Samakan harga semua varian
               </Button>
